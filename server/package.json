@@ -1,0 +1,12 @@
+{
+  "name": "whisper-drop-server",
+  "version": "1.0.0",
+  "description": "Zero-knowledge ephemeral WebRTC signaling server for Whisper Drop",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
