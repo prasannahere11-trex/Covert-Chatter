@@ -1,5 +1,5 @@
 /**
- * Whisper Drop — WebRTC & End-to-End Encrypted Ephemeral Manager
+ * Covert Chatter — WebRTC & End-to-End Encrypted Ephemeral Manager
  * 
  * Cryptographic & Ephemeral Workflow:
  * 1. WebRTC DataChannel established over STUN.
@@ -334,10 +334,17 @@ export class PeerSession {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    // Send offer to joiner
+    // Send offer to joiner with public identity attachment
     this.sendSignaling({
       type: 'offer',
       sdp: offer.sdp,
+      identity: this.myIdentity?.publicJWKs ? {
+        protocol: 'covert-chatter',
+        version: 1,
+        ecdsa: this.myIdentity.publicJWKs.ecdsa,
+        ecdh: this.myIdentity.publicJWKs.ecdh,
+        fingerprint: this.myIdentity.fingerprint,
+      } : null,
     });
   }
 
@@ -346,6 +353,12 @@ export class PeerSession {
    */
   async handleRemoteOffer(offerData) {
     const pc = this.setupPeerConnection();
+
+    // Link host identity if sent with offer
+    if (offerData.identity) {
+      await this.setPeerIdentity(offerData.identity);
+      this.callbacks.onPeerIdentityLinked?.(offerData.identity);
+    }
 
     // Listen for incoming DataChannel
     pc.ondatachannel = async (event) => {
@@ -362,13 +375,20 @@ export class PeerSession {
     this.isRemoteDescriptionSet = true;
     await this.flushQueuedIceCandidates();
 
-    // Create and send Answer
+    // Create and send Answer with public identity attachment
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
 
     this.sendSignaling({
       type: 'answer',
       sdp: answer.sdp,
+      identity: this.myIdentity?.publicJWKs ? {
+        protocol: 'covert-chatter',
+        version: 1,
+        ecdsa: this.myIdentity.publicJWKs.ecdsa,
+        ecdh: this.myIdentity.publicJWKs.ecdh,
+        fingerprint: this.myIdentity.fingerprint,
+      } : null,
     });
   }
 
@@ -377,6 +397,12 @@ export class PeerSession {
    */
   async handleRemoteAnswer(answerData) {
     if (!this.pc) return;
+
+    // Link joiner identity if sent with answer
+    if (answerData.identity) {
+      await this.setPeerIdentity(answerData.identity);
+      this.callbacks.onPeerIdentityLinked?.(answerData.identity);
+    }
 
     const remoteDesc = new RTCSessionDescription({
       type: 'answer',
@@ -473,6 +499,22 @@ export class PeerSession {
         }
       }
 
+      // Send handshake identity across direct channel
+      if (this.myIdentity?.publicJWKs) {
+        try {
+          dc.send(JSON.stringify({
+            type: 'peer-identity-handshake',
+            identity: {
+              protocol: 'covert-chatter',
+              version: 1,
+              ecdsa: this.myIdentity.publicJWKs.ecdsa,
+              ecdh: this.myIdentity.publicJWKs.ecdh,
+              fingerprint: this.myIdentity.fingerprint,
+            },
+          }));
+        } catch {}
+      }
+
       this.callbacks.onStatusChange('connected', {
         room: this.roomCode,
         isHost: this.isHost,
@@ -494,6 +536,13 @@ export class PeerSession {
     dc.onmessage = async (event) => {
       try {
         const payload = JSON.parse(event.data);
+
+        // 🤝 Automated Direct Identity Handshake
+        if (payload.type === 'peer-identity-handshake' && payload.identity) {
+          await this.setPeerIdentity(payload.identity);
+          this.callbacks.onPeerIdentityLinked?.(payload.identity);
+          return;
+        }
 
         // 📁 Pass 5: File Transfer Protocol Messages
         if (payload.type === 'file-start') {

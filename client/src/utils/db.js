@@ -1,8 +1,8 @@
 /**
- * Whisper Drop — Persistent Identity Storage Module (IndexedDB)
+ * Covert Chatter — Persistent Identity Storage Module (IndexedDB)
  * 
  * Storage Architecture:
- * - Database Name: "whisper_drop_identity"
+ * - Database Name: "covert_chatter_identity" (with auto-migration from "whisper_drop_identity")
  * - Store Name: "key_store"
  * - Stored Items:
  *   - Non-extractable ECDSA CryptoKeyPair (Signing)
@@ -18,7 +18,8 @@
 
 import { generateFullIdentity } from './crypto';
 
-const DB_NAME = 'whisper_drop_identity';
+const DB_NAME = 'covert_chatter_identity';
+const LEGACY_DB_NAME = 'whisper_drop_identity';
 const DB_VERSION = 1;
 const STORE_NAME = 'key_store';
 const IDENTITY_RECORD_ID = 'primary_identity';
@@ -28,16 +29,17 @@ export const BROWSER_SUPPORT_ERROR_MSG =
 
 /**
  * Open or upgrade the IndexedDB database instance.
+ * @param {string} [name=DB_NAME]
  * @returns {Promise<IDBDatabase>}
  */
-function openDB() {
+function openDB(name = DB_NAME) {
   return new Promise((resolve, reject) => {
     if (!window.indexedDB) {
       reject(new Error(BROWSER_SUPPORT_ERROR_MSG));
       return;
     }
 
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(name, DB_VERSION);
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
@@ -57,15 +59,43 @@ function openDB() {
 }
 
 /**
+ * Helper to check legacy database for existing identity to migrate.
+ * @returns {Promise<object|null>}
+ */
+async function checkLegacyIdentity() {
+  try {
+    const db = await openDB(LEGACY_DB_NAME);
+    return await new Promise((resolve) => {
+      try {
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          resolve(null);
+          return;
+        }
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get(IDENTITY_RECORD_ID);
+
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Retrieve the existing persistent identity from IndexedDB.
- * Returns null if no identity has been created yet.
+ * Performs automatic one-time migration from legacy whisper_drop_identity if present.
  * 
  * @returns {Promise<object|null>}
  */
 export async function getStoredIdentity() {
   try {
-    const db = await openDB();
-    return await new Promise((resolve, reject) => {
+    const db = await openDB(DB_NAME);
+    const existing = await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       const request = store.get(IDENTITY_RECORD_ID);
@@ -78,6 +108,20 @@ export async function getStoredIdentity() {
         reject(new Error(BROWSER_SUPPORT_ERROR_MSG));
       };
     });
+
+    if (existing) {
+      return existing;
+    }
+
+    // Check for legacy identity migration
+    const legacyIdentity = await checkLegacyIdentity();
+    if (legacyIdentity && legacyIdentity.signingKeyPair && legacyIdentity.agreementKeyPair) {
+      console.log('[Covert Chatter Migration] Migrating legacy identity to covert_chatter_identity...');
+      await saveIdentity(legacyIdentity);
+      return legacyIdentity;
+    }
+
+    return null;
   } catch (err) {
     console.error('[IndexedDB] Error loading identity:', err);
     throw new Error(BROWSER_SUPPORT_ERROR_MSG);
@@ -85,14 +129,14 @@ export async function getStoredIdentity() {
 }
 
 /**
- * Store a newly generated identity record into IndexedDB.
+ * Store an identity record into IndexedDB.
  * 
  * @param {object} identityData
- * @returns {Promise<void>}
+ * @returns {Promise<object>}
  */
 export async function saveIdentity(identityData) {
   try {
-    const db = await openDB();
+    const db = await openDB(DB_NAME);
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
@@ -162,7 +206,7 @@ export async function getOrCreateIdentity() {
  */
 export async function resetIdentity() {
   try {
-    const db = await openDB();
+    const db = await openDB(DB_NAME);
     await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);

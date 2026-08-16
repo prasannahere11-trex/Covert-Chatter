@@ -1,12 +1,12 @@
 ================================================================================
-                      COVERT CHATTER (WHISPER DROP)
+                      COVERT CHATTER
               COMPLETE PROJECT STATUS & FULL CHRONOLOGICAL RECORD
 ================================================================================
-Last Updated: 2026-08-16 19:10:00 IST
+Last Updated: 2026-08-16 19:30:00 IST
 Repository Location: e:\Covert Chat
 Git Branch: main
-Latest Git Commit: 82295f1 (feat: complete Pass 6 TURN traversal, single-tunnel WS proxy, and ngrok allowedHosts)
-Overall System Health: 100% OPERATIONAL & VERIFIED (Passes 1, 2, 3, 4, 5, & 6 Complete)
+Latest Git Commit: Pass 7 Complete (Rebranding to Covert Chatter & Unified 1-Screen Pairing Flow)
+Overall System Health: 100% OPERATIONAL & VERIFIED (All Passes Complete)
 
 ================================================================================
 1. PROJECT PURPOSE, MISSION & CORE SECURITY MODEL
@@ -251,17 +251,22 @@ Foundational Security & Cryptographic Principles:
       * Built active candidate pair type detection via `RTCPeerConnection.getStats()` in `PeerSession.getConnectionType()`.
       * Added connection quality badge in `ConnectRoom.jsx` ("Direct connection" vs "Relayed connection").
       * Cryptographic invariant maintained: TURN server acts strictly as an encrypted byte relay with zero plaintext access (E2EE holds 100%).
-- [x] Milestone 12 (Single-Tunnel ngrok Proxy & Host Whitelist):
-      * Configured WebSocket proxy in `client/vite.config.js` forwarding `/ws` to `http://localhost:8080` (`ws: true`).
-      * Added dynamic origin URL derivation (`getDefaultSignalingUrl()`) in `client/src/utils/webrtc.js`.
-      * Added `allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app']` in `client/vite.config.js`.
-      * Verified production build passing (`npm run build`).
+- [x] Milestone 13 (Rebrand to Covert Chatter & Unified 1-Screen Pairing Flow):
+      * Complete rebranding across UI, HTML meta tags, package names, console logs, and READMEs.
+      * Database migration in `client/src/utils/db.js`: updated DB name to `covert_chatter_identity` with automatic one-time migration from `whisper_drop_identity` (preserving keys & fingerprints seamlessly).
+      * Unified 1-screen pairing flow in `ConnectRoom.jsx`:
+        - "Start Chat" creates room and displays full-screen unified QR code + room code ("Show this to your friend").
+        - "Join Chat" immediately launches live camera scanner.
+        - Automatic chain on scan: QR decode -> identity authentication -> room join -> WebRTC connection -> E2EE key derivation ("Connecting to [fingerprint]...") -> active chat.
+        - Discreet "Manual code / JSON payload fallback" link.
+        - Session memory ("Chat with [fingerprint] again") for instant 1-click reconnecting after disconnects.
+      * Verified with clean production build (`npm run build`).
 - [x] Maintained comprehensive live tracking in `status.txt`.
 
 ================================================================================
 7. UPCOMING ROADMAP & FUTURE MILESTONES
 ================================================================================
-1. Pass 7 — Ephemeral Media & Polish:
+1. Future Polish:
    - Optional encrypted P2P audio/video stream negotiation.
    - Offline multi-device QR exchange enhancements.
 ================================================================================

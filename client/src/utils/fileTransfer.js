@@ -1,5 +1,5 @@
 /**
- * Whisper Drop — Encrypted Ephemeral File Transfer & Backpressure Subsystem (Pass 5)
+ * Covert Chatter — Encrypted Ephemeral File Transfer & Backpressure Subsystem (Pass 5)
  * 
  * 🎓 DEEP DIVE: RTCDataChannel Chunking & Backpressure Flow Control
  * ================================================================

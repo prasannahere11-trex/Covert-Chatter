@@ -1,5 +1,5 @@
 /**
- * Whisper Drop — Ephemeral Message Lifecycle & Anti-Persistence Subsystem
+ * Covert Chatter — Ephemeral Message Lifecycle & Anti-Persistence Subsystem
  * 
  * 🛡️ SECURITY INVARIANTS:
  * -----------------------

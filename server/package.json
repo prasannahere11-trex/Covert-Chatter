@@ -1,7 +1,7 @@
 {
-  "name": "whisper-drop-server",
+  "name": "covert-chatter-server",
   "version": "1.0.0",
-  "description": "Zero-knowledge ephemeral WebRTC signaling server for Whisper Drop",
+  "description": "Zero-knowledge ephemeral WebRTC signaling server for Covert Chatter",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

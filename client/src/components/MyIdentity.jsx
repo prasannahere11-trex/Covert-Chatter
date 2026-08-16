@@ -30,7 +30,7 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
 
   // Canonical payload formatted for QR encoding & peer verification
   const qrPayload = JSON.stringify({
-    protocol: 'whisper-drop',
+    protocol: 'covert-chatter',
     version: 1,
     fingerprint: identity.fingerprint,
     ecdsa: identity.publicJWKs.ecdsa,
@@ -70,7 +70,7 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
       const svgUrl = URL.createObjectURL(svgBlob);
       const downloadLink = document.createElement('a');
       downloadLink.href = svgUrl;
-      downloadLink.download = `whisper-identity-${identity.fingerprint.slice(0, 8).replace(/\s/g, '')}.svg`;
+      downloadLink.download = `covert-identity-${identity.fingerprint.slice(0, 8).replace(/\s/g, '')}.svg`;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);

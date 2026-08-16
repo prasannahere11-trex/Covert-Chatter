@@ -28,7 +28,7 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
 
   const scannerRef = useRef(null);
   const fileInputRef = useRef(null);
-  const scannerContainerId = 'whisper-qr-reader';
+  const scannerContainerId = 'covert-qr-reader';
 
   const stopCamera = async () => {
     if (scannerRef.current) {
@@ -190,7 +190,7 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
                 Scan Peer Identity
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Scan another user's Whisper Drop QR code to authenticate their public ECDSA and ECDH cryptographic keys.
+                Scan another user's Covert Chatter QR code to authenticate their public ECDSA and ECDH cryptographic keys.
               </p>
             </div>
 

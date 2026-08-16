@@ -1,5 +1,5 @@
 /**
- * Whisper Drop - Ephemeral WebRTC Signaling Server
+ * Covert Chatter - Ephemeral WebRTC Signaling Server
  * 
  * Purpose:
  * Relays WebRTC connection setup data (SDP offers/answers, ICE candidates)
@@ -123,4 +123,4 @@ wss.on('connection', (ws) => {
   });
 });
 
-console.log(`[Whisper Drop] Signaling server running on ws://localhost:${PORT}`);
+console.log(`[Covert Chatter] Signaling server running on ws://localhost:${PORT}`);

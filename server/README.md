@@ -1,6 +1,6 @@
-# Whisper Drop — Signaling Server
+# Covert Chatter — Signaling Server
 
-A zero-knowledge, ephemeral WebRTC signaling server for **Whisper Drop**.
+A zero-knowledge, ephemeral WebRTC signaling server for **Covert Chatter**.
 
 Its sole responsibility is to allow two browser peers to exchange WebRTC session descriptions (SDP offers/answers) and ICE candidates so they can establish a direct, encrypted peer-to-peer data channel.
 
@@ -16,7 +16,7 @@ Its sole responsibility is to allow two browser peers to exchange WebRTC session
 ## Getting Started
 
 ### 1. Install Dependencies
-Navigate to the `server` directory and install the `ws` package:
+Navigate to the `server` directory and install dependencies:
 ```bash
 cd server
 npm install

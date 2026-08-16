@@ -1,5 +1,5 @@
 /**
- * Whisper Drop — Cryptographic Identity Subsystem
+ * Covert Chatter — Cryptographic Identity Subsystem
  * 
  * Cryptographic Architecture & Standards:
  * 1. Signing Keypair (ECDSA P-256 / SHA-256):
@@ -202,8 +202,9 @@ export async function validatePeerIdentityPayload(rawPayload) {
     return {
       valid: true,
       peerIdentity: {
-        protocol: protocol || 'whisper-drop',
+        protocol: protocol || 'covert-chatter',
         version: version || 1,
+        room: parsed.room || null,
         ecdsa,
         ecdh,
         fingerprint: computedFingerprint,

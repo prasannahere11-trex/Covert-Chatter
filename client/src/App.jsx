@@ -2,23 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { 
   Shield, 
   QrCode, 
-  Scan, 
   KeyRound, 
   Radio, 
   AlertTriangle,
   RefreshCw,
   Fingerprint,
-  Lock
+  Lock,
+  MessageSquare
 } from 'lucide-react';
 import MyIdentity from './components/MyIdentity';
-import QRScanner from './components/QRScanner';
 import KeyDetails from './components/KeyDetails';
 import ConnectRoom from './components/ConnectRoom';
 import Toast from './components/Toast';
 import { getOrCreateIdentity, resetIdentity } from './utils/db';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('connect'); // 'connect' | 'my-identity' | 'scan-peer' | 'key-details'
+  const [activeTab, setActiveTab] = useState('connect'); // 'connect' | 'my-identity' | 'key-details'
   const [identity, setIdentity] = useState(null);
   const [verifiedPeer, setVerifiedPeer] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,10 +88,10 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-extrabold tracking-tight text-white">
-                  WHISPER <span className="text-emerald-400 font-normal">DROP</span>
+                  COVERT <span className="text-emerald-400 font-normal">CHATTER</span>
                 </h1>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  PASS 3: E2EE ACTIVE
+                  E2EE ACTIVE
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
@@ -155,7 +154,7 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* Tab Navigation */}
+            {/* Streamlined Tab Navigation */}
             <div className="flex items-center justify-center">
               <nav
                 className="inline-flex p-1 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-lg backdrop-blur-md overflow-x-auto max-w-full"
@@ -163,14 +162,14 @@ export default function App() {
               >
                 <button
                   onClick={() => setActiveTab('connect')}
-                  className={`flex items-center gap-2 px-3.5 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
                     activeTab === 'connect'
                       ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-950/50'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                   }`}
                 >
-                  <Radio className="w-4 h-4" />
-                  <span>Connect</span>
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Chat & Pair</span>
                 </button>
 
                 <button
@@ -183,21 +182,6 @@ export default function App() {
                 >
                   <QrCode className="w-4 h-4" />
                   <span>My Identity</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('scan-peer')}
-                  className={`flex items-center gap-2 px-3.5 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
-                    activeTab === 'scan-peer'
-                      ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-md shadow-cyan-950/50'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                  }`}
-                >
-                  <Scan className="w-4 h-4" />
-                  <span>Scan Peer</span>
-                  {verifiedPeer && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block ml-0.5" />
-                  )}
                 </button>
 
                 <button
@@ -221,7 +205,6 @@ export default function App() {
                   myIdentity={identity}
                   verifiedPeer={verifiedPeer}
                   onSetVerifiedPeer={setVerifiedPeer}
-                  onNavigateToScan={() => setActiveTab('scan-peer')}
                   onShowToast={showToast}
                 />
               )}
@@ -231,14 +214,6 @@ export default function App() {
                   identity={identity}
                   onRegenerate={handleRegenerateIdentity}
                   onShowToast={showToast}
-                />
-              )}
-
-              {activeTab === 'scan-peer' && (
-                <QRScanner
-                  onShowToast={showToast}
-                  onPeerVerified={(peer) => setVerifiedPeer(peer)}
-                  onNavigateToConnect={() => setActiveTab('connect')}
                 />
               )}
 
@@ -253,7 +228,7 @@ export default function App() {
       {/* Footer Note */}
       <footer className="py-6 text-center text-xs text-slate-400 border-t border-slate-900">
         <p>
-          Whisper Drop • End-to-End Encrypted (AES-256-GCM) • ECDSA Digital Signatures • Non-Extractable Web Crypto Keystore
+          Covert Chatter • End-to-End Encrypted (AES-256-GCM) • ECDSA Digital Signatures • Non-Extractable Web Crypto Keystore
         </p>
       </footer>
     </div>

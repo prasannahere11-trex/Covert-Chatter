@@ -1,5 +1,5 @@
 /**
- * Whisper Drop — Message Encryption & Digital Signature Subsystem (AES-GCM + ECDSA)
+ * Covert Chatter — Message Encryption & Digital Signature Subsystem (AES-GCM + ECDSA)
  * 
  * 🎓 Cryptographic Security Principles:
  * ---------------------------------------
@@ -13,7 +13,7 @@
  *    - Reusing an IV in AES-GCM (a "nonce-reuse attack") destroys authenticity and allows
  *      an attacker to recover the authentication key (GHASH hash key `H`) and decrypt/forge
  *      messages.
- *    - In Whisper Drop, we generate a brand-new, cryptographically secure random 12-byte IV
+ *    - In Covert Chatter, we generate a brand-new, cryptographically secure random 12-byte IV
  *      (`crypto.getRandomValues(new Uint8Array(12))`) for every single message.
  * 
  * 2. Authenticated Digital Signatures (ECDSA P-256 + SHA-256):

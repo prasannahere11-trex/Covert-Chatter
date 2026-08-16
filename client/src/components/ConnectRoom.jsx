@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { 
   Radio, 
   Copy, 
@@ -31,7 +33,13 @@ import {
   X,
   FileText,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Camera,
+  CameraOff,
+  FileImage,
+  ArrowRight,
+  UserCheck,
+  RotateCcw
 } from 'lucide-react';
 import { PeerSession, getDefaultSignalingUrl } from '../utils/webrtc';
 import { validatePeerIdentityPayload } from '../utils/crypto';
@@ -56,11 +64,12 @@ import { formatFileSize, MAX_FILE_SIZE } from '../utils/fileTransfer';
  * and revokes all in-memory Blob URLs (`URL.revokeObjectURL`).
  */
 
+const SESSION_STORAGE_PEER_KEY = 'covert_last_paired_peer';
+
 export default function ConnectRoom({ 
   myIdentity, 
   verifiedPeer, 
   onSetVerifiedPeer, 
-  onNavigateToScan, 
   onShowToast 
 }) {
   const [status, setStatus] = useState('idle'); // 'idle' | 'creating' | 'waiting' | 'joining' | 'connecting' | 'connected' | 'disconnected' | 'error'
@@ -77,6 +86,19 @@ export default function ConnectRoom({
   const [showManualPeerInput, setShowManualPeerInput] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
+  // Simplified 1-Screen Pairing States
+  const [isJoinScannerOpen, setIsJoinScannerOpen] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [savedPeer, setSavedPeer] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem(SESSION_STORAGE_PEER_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
   // Pass 5 File Sharing States
   const [attachedFile, setAttachedFile] = useState(null);
   const [fileTtlSeconds, setFileTtlSeconds] = useState(DEFAULT_FILE_TTL_SECONDS); // 180s (3m) default
@@ -91,8 +113,28 @@ export default function ConnectRoom({
   const messagesEndRef = useRef(null);
   const blurTimerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const qrFileInputRef = useRef(null);
+  const html5QrScannerRef = useRef(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+
+  const scannerContainerId = 'covert-join-qr-reader';
+
+  // Helper to save paired peer in current browser session
+  const saveSessionPeer = (peer) => {
+    if (!peer) return;
+    try {
+      sessionStorage.setItem(SESSION_STORAGE_PEER_KEY, JSON.stringify(peer));
+      setSavedPeer(peer);
+    } catch {}
+  };
+
+  const clearSessionPeer = () => {
+    try {
+      sessionStorage.removeItem(SESSION_STORAGE_PEER_KEY);
+      setSavedPeer(null);
+    } catch {}
+  };
 
   // Auto-scroll chat to bottom
   const scrollToBottom = () => {
@@ -123,7 +165,6 @@ export default function ConnectRoom({
     };
 
     checkType();
-    // Re-check after 1.5s to ensure candidate pair nomination stats are settled
     const timer = setTimeout(checkType, 1500);
 
     return () => {
@@ -160,7 +201,6 @@ export default function ConnectRoom({
 
       const next = prev.map((msg) => {
         if (msg.sender === 'peer' && msg.burnOnRead && !msg.burnDeadline) {
-          // For completed files or regular text messages
           if (!msg.type || msg.type === 'text' || (msg.type === 'file' && msg.status === 'completed')) {
             updated = true;
             return {
@@ -181,7 +221,6 @@ export default function ConnectRoom({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // Start 30s background blur timer
         blurTimerRef.current = setTimeout(() => {
           if (sessionRef.current) {
             sessionRef.current.cleanup(true);
@@ -203,7 +242,6 @@ export default function ConnectRoom({
     };
 
     const handleBeforeUnload = () => {
-      // Immediate volatile wipe on tab close
       if (sessionRef.current) {
         sessionRef.current.cleanup(false);
       }
@@ -223,9 +261,105 @@ export default function ConnectRoom({
       if (sessionRef.current) {
         sessionRef.current.cleanup();
       }
+      stopCameraScanner();
       messagesRef.current.forEach(revokeFileBlobUrl);
     };
   }, []);
+
+  // Camera Scanner Lifecycle
+  const stopCameraScanner = async () => {
+    if (html5QrScannerRef.current) {
+      try {
+        if (html5QrScannerRef.current.isScanning) {
+          await html5QrScannerRef.current.stop();
+        }
+        await html5QrScannerRef.current.clear();
+      } catch {}
+      html5QrScannerRef.current = null;
+    }
+    setIsJoinScannerOpen(false);
+    setCameraError(null);
+  };
+
+  const startCameraScanner = async () => {
+    setIsJoinScannerOpen(true);
+    setCameraError(null);
+
+    setTimeout(async () => {
+      try {
+        if (html5QrScannerRef.current) {
+          await stopCameraScanner();
+        }
+
+        const scanner = new Html5Qrcode(scannerContainerId, {
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          verbose: false,
+        });
+        html5QrScannerRef.current = scanner;
+
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 12, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+          (decodedText) => handleQrScanSuccess(decodedText),
+          () => {} // Suppress noise
+        );
+      } catch (err) {
+        console.warn('Camera error:', err);
+        setCameraError(
+          err.name === 'NotAllowedError'
+            ? 'Camera permission denied. Please allow camera access in browser settings.'
+            : 'Unable to access camera. You can also upload a QR code image.'
+        );
+      }
+    }, 100);
+  };
+
+  // Automated Unified Scan Handler: Chains validation -> pairing -> join -> E2EE derivation
+  const handleQrScanSuccess = async (decodedText) => {
+    try {
+      const validation = await validatePeerIdentityPayload(decodedText);
+      if (!validation.valid || !validation.peerIdentity) {
+        onShowToast(validation.error || 'Invalid QR identity payload', 'error');
+        return;
+      }
+
+      const peer = validation.peerIdentity;
+      onSetVerifiedPeer(peer);
+      saveSessionPeer(peer);
+      await stopCameraScanner();
+
+      // If room code is embedded in the unified QR, join room automatically!
+      if (peer.room) {
+        onShowToast(`Linked identity & joining room ${peer.room}...`, 'success');
+        await handleDirectJoinRoom(peer.room, peer);
+      } else {
+        onShowToast('Peer identity linked! Enter the 6-character room code to connect.', 'info');
+      }
+    } catch (err) {
+      onShowToast(`Scan processing error: ${err.message}`, 'error');
+    }
+  };
+
+  const handleQrFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingFile(true);
+    try {
+      const tempScanner = new Html5Qrcode('covert-file-temp-scanner', {
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        verbose: false,
+      });
+      const decodedText = await tempScanner.scanFile(file, true);
+      await tempScanner.clear();
+      await handleQrScanSuccess(decodedText);
+    } catch (err) {
+      onShowToast('Could not find a valid QR code in this image.', 'warning');
+    } finally {
+      setIsProcessingFile(false);
+      if (qrFileInputRef.current) qrFileInputRef.current.value = '';
+    }
+  };
 
   const handleManualPeerValidate = async (e) => {
     e?.preventDefault();
@@ -235,9 +369,13 @@ export default function ConnectRoom({
       const res = await validatePeerIdentityPayload(rawPeerJsonInput.trim());
       if (res.valid && res.peerIdentity) {
         onSetVerifiedPeer(res.peerIdentity);
+        saveSessionPeer(res.peerIdentity);
         setShowManualPeerInput(false);
         setRawPeerJsonInput('');
         onShowToast('Peer identity verified and linked!', 'success');
+        if (res.peerIdentity.room) {
+          await handleDirectJoinRoom(res.peerIdentity.room, res.peerIdentity);
+        }
       } else {
         onShowToast(res.error || 'Invalid peer identity payload', 'error');
       }
@@ -259,12 +397,7 @@ export default function ConnectRoom({
     });
   };
 
-  const initSession = () => {
-    if (!verifiedPeer) {
-      onShowToast('Please scan or paste peer identity before connecting', 'warning');
-      return null;
-    }
-
+  const initSession = (peerToUse = verifiedPeer) => {
     if (sessionRef.current) {
       sessionRef.current.cleanup(false);
     }
@@ -279,7 +412,7 @@ export default function ConnectRoom({
             onShowToast('🔒 Direct E2EE WebRTC DataChannel established!', 'success');
           } else if (newStatus === 'disconnected') {
             messagesRef.current.forEach(revokeFileBlobUrl);
-            setMessages([]); // Instant volatile memory purge on disconnect
+            setMessages([]);
             setAttachedFile(null);
             onShowToast(details?.message || 'Peer disconnected — memory purged', 'warning');
           } else if (newStatus === 'error') {
@@ -288,6 +421,10 @@ export default function ConnectRoom({
             setAttachedFile(null);
             onShowToast(details?.message || 'Connection error', 'error');
           }
+        },
+        onPeerIdentityLinked: (linkedPeer) => {
+          onSetVerifiedPeer(linkedPeer);
+          saveSessionPeer(linkedPeer);
         },
         onRoomCreated: (code) => {
           setRoomCode(code);
@@ -303,7 +440,7 @@ export default function ConnectRoom({
         },
       },
       myIdentity,
-      verifiedPeer,
+      peerToUse,
       customServerUrl
     );
 
@@ -311,92 +448,80 @@ export default function ConnectRoom({
     return session;
   };
 
-  const handleCreateRoom = async () => {
+  // Host: Tap "Start Chat"
+  const handleStartChat = async () => {
     messagesRef.current.forEach(revokeFileBlobUrl);
     setMessages([]);
     setRoomCode('');
-    const session = initSession();
+    const session = initSession(verifiedPeer);
     if (session) {
       await session.createRoom();
     }
   };
 
-  const handleJoinRoom = async (e) => {
-    e?.preventDefault();
-    const cleanCode = joinInput.trim().toUpperCase();
+  // Guest: Tap "Join Chat"
+  const handleJoinChatClick = () => {
+    startCameraScanner();
+  };
+
+  // Direct Join
+  const handleDirectJoinRoom = async (codeToJoin, peerToUse = verifiedPeer) => {
+    const cleanCode = (codeToJoin || joinInput).trim().toUpperCase();
     if (!cleanCode || cleanCode.length < 6) {
       onShowToast('Please enter a valid 6-character room code', 'warning');
       return;
     }
-
     messagesRef.current.forEach(revokeFileBlobUrl);
     setMessages([]);
-    const session = initSession();
+    setRoomCode(cleanCode);
+    const session = initSession(peerToUse);
     if (session) {
       await session.joinRoom(cleanCode);
     }
   };
 
-  const handleCopyRoomCode = async () => {
-    if (!roomCode) return;
-    try {
-      await navigator.clipboard.writeText(roomCode);
-      setCopiedCode(true);
-      onShowToast(`Room code ${roomCode} copied to clipboard`, 'success');
-      setTimeout(() => setCopiedCode(false), 2000);
-    } catch {
-      onShowToast('Failed to copy room code', 'error');
-    }
-  };
-
   const handleSendMessage = async (e) => {
     e?.preventDefault();
-    const trimmed = inputText.trim();
-    if (!trimmed || !sessionRef.current) return;
+    if (!inputText.trim() || !sessionRef.current || status !== 'connected') return;
+
+    const textToSend = inputText.trim();
+    setInputText('');
 
     try {
-      const msgRecord = await sessionRef.current.sendMessage(trimmed, {
+      const sentMsg = await sessionRef.current.sendMessage(textToSend, {
         ttlSeconds: DEFAULT_TTL_SECONDS,
         burnOnRead: burnOnReadEnabled,
       });
-
-      setMessages((prev) => [...prev, msgRecord]);
-      setInputText('');
+      setMessages((prev) => [...prev, sentMsg]);
     } catch (err) {
-      onShowToast(err.message || 'Failed to send message', 'error');
+      console.error('[WebRTC] Send message failed:', err);
+      onShowToast(`Failed to send message: ${err.message}`, 'error');
     }
   };
 
+  // File Handling
   const handleSelectFile = (file) => {
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) {
-      onShowToast(`File size (${formatFileSize(file.size)}) exceeds the 25MB limit.`, 'error');
+      onShowToast(`File exceeds 25MB limit (${formatFileSize(file.size)})`, 'error');
       return;
     }
     setAttachedFile(file);
-    setFileTtlSeconds(DEFAULT_FILE_TTL_SECONDS); // 3 minutes default
   };
 
   const handleFileInputChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      handleSelectFile(file);
-    }
-    // Reset file input so same file can be selected again if cancelled
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (file) handleSelectFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSendAttachedFile = async () => {
-    if (!attachedFile || !sessionRef.current || isSendingFile) return;
+    if (!attachedFile || !sessionRef.current || status !== 'connected' || isSendingFile) return;
 
-    const file = attachedFile;
     setIsSendingFile(true);
-
     try {
-      await sessionRef.current.sendFile(
-        file,
+      const fileRecord = await sessionRef.current.sendFile(
+        attachedFile,
         {
           ttlSeconds: fileTtlSeconds,
           burnOnRead: fileBurnOnRead,
@@ -406,24 +531,23 @@ export default function ConnectRoom({
         }
       );
 
+      handleIncomingMessageOrFile(fileRecord);
       setAttachedFile(null);
       setFileBurnOnRead(false);
-      onShowToast(`Encrypted file "${file.name}" sent successfully!`, 'success');
+      setFileTtlSeconds(DEFAULT_FILE_TTL_SECONDS);
+      onShowToast('File encrypted & sent successfully!', 'success');
     } catch (err) {
-      console.error('[FileTransfer] Send error:', err);
-      onShowToast(err.message || 'Failed to send file', 'error');
+      console.error('[WebRTC] File send failed:', err);
+      onShowToast(`File send failed: ${err.message}`, 'error');
     } finally {
       setIsSendingFile(false);
     }
   };
 
-  // Drag-and-Drop Handlers
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (status === 'connected' && !isDraggingOver) {
-      setIsDraggingOver(true);
-    }
+    if (status === 'connected') setIsDraggingOver(true);
   };
 
   const handleDragLeave = (e) => {
@@ -439,7 +563,6 @@ export default function ConnectRoom({
     setIsDraggingOver(false);
 
     if (status !== 'connected') return;
-
     const files = e.dataTransfer?.files;
     if (files && files.length > 0) {
       handleSelectFile(files[0]);
@@ -454,264 +577,382 @@ export default function ConnectRoom({
     setStatusDetails(null);
     setRoomCode('');
     messagesRef.current.forEach(revokeFileBlobUrl);
-    setMessages([]); // Instant volatile memory purge
+    setMessages([]);
     setAttachedFile(null);
-    onShowToast('Disconnected from room — all messages wiped', 'info');
+    onShowToast('Disconnected from room — all memory wiped', 'info');
   };
+
+  const handleCopyRoomCode = async () => {
+    if (!roomCode) return;
+    try {
+      await navigator.clipboard.writeText(roomCode);
+      setCopiedCode(true);
+      onShowToast(`Room code ${roomCode} copied!`, 'success');
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {
+      onShowToast('Failed to copy', 'error');
+    }
+  };
+
+  // Construct unified QR payload for Host (includes identity + room code)
+  const hostQrPayload = myIdentity?.publicJWKs && roomCode
+    ? JSON.stringify({
+        protocol: 'covert-chatter',
+        version: 1,
+        room: roomCode,
+        fingerprint: myIdentity.fingerprint,
+        ecdsa: myIdentity.publicJWKs.ecdsa,
+        ecdh: myIdentity.publicJWKs.ecdh,
+      })
+    : '';
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top Header Card */}
-      <div className="glass-panel p-6 sm:p-8 rounded-2xl relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                <Flame className="w-5 h-5 text-amber-400 animate-pulse" />
-                Ephemeral End-to-End Encrypted Tunnel
-              </h2>
-              <span className="badge-emerald text-[11px]">Pass 5: E2EE File Drops Active</span>
-            </div>
-            <p className="text-xs text-slate-400">
-              Zero disk persistence. Text & files are chunked (16KB), encrypted with AES-256-GCM, signed via ECDSA, and automatically wiped from RAM upon expiry.
-            </p>
-          </div>
+      <div id="covert-file-temp-scanner" style={{ display: 'none' }} />
 
-          <button
-            onClick={() => setShowServerConfig(!showServerConfig)}
-            className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
-            title="Configure Signaling Server URL"
-          >
-            <Server className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Signaling URL</span>
-            {showServerConfig ? (
-              <ChevronUp className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5" />
-            )}
-          </button>
+      {/* Top Signaling Configuration Bar (Collapsible) */}
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs font-semibold text-slate-300">Covert Chatter E2EE Network</span>
         </div>
 
-        {/* Server URL Config Bar */}
-        {showServerConfig && (
-          <div className="mt-4 p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2 animate-slide-up text-xs">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-300">Signaling Server URL</span>
-              <span className="text-[11px] text-emerald-400">Default: {getDefaultSignalingUrl()}</span>
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={customServerUrl}
-                onChange={(e) => setCustomServerUrl(e.target.value)}
-                disabled={status !== 'idle' && status !== 'disconnected' && status !== 'error'}
-                placeholder={getDefaultSignalingUrl()}
-                className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 font-mono text-emerald-300 focus:outline-none focus:border-emerald-500"
-              />
-              <button
-                onClick={() => setCustomServerUrl(getDefaultSignalingUrl())}
-                className="btn-secondary text-xs px-3 py-1.5"
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-        )}
+        <button
+          onClick={() => setShowServerConfig(!showServerConfig)}
+          className="text-[11px] text-slate-400 hover:text-cyan-400 flex items-center gap-1 transition-colors"
+        >
+          <Server className="w-3 h-3" />
+          <span>Server: {customServerUrl.replace(/^wss?:\/\//, '')}</span>
+          {showServerConfig ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
       </div>
 
-      {/* Step 1: Peer Identity Binding Card */}
-      <div className={`glass-panel p-6 rounded-2xl border transition-all ${verifiedPeer ? 'border-emerald-500/40 bg-slate-900/40' : 'border-amber-500/40 bg-amber-950/10'}`}>
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-xl border ${verifiedPeer ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'}`}>
-              {verifiedPeer ? <ShieldCheck className="w-6 h-6" /> : <KeyRound className="w-6 h-6" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-white">
-                  {verifiedPeer ? 'Authenticated Peer Identity Linked' : 'Peer Identity Required for E2EE'}
-                </h3>
-                {verifiedPeer && <span className="badge-emerald text-[10px]">E2EE Ready</span>}
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {verifiedPeer ? (
-                  <span>
-                    Verified Fingerprint: <strong className="font-mono text-emerald-300">{verifiedPeer.fingerprint}</strong>
-                  </span>
-                ) : (
-                  'Scan your peer’s QR code or paste their public identity payload to derive the shared AES-GCM session key.'
-                )}
-              </p>
-            </div>
+      {showServerConfig && (
+        <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2 animate-slide-up text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-slate-300">Signaling Server URL</span>
+            <span className="text-[11px] text-emerald-400">Default: {getDefaultSignalingUrl()}</span>
           </div>
-
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            {!verifiedPeer ? (
-              <>
-                <button
-                  onClick={onNavigateToScan}
-                  className="btn-primary text-xs py-2 px-3 flex items-center justify-center gap-1.5 flex-1 md:flex-initial"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>Scan via Camera / Image</span>
-                </button>
-                <button
-                  onClick={() => setShowManualPeerInput(!showManualPeerInput)}
-                  className="btn-secondary text-xs py-2 px-3 flex items-center justify-center gap-1.5"
-                >
-                  <FileCode className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Paste JSON</span>
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => onSetVerifiedPeer(null)}
-                disabled={status === 'connected' || status === 'connecting'}
-                className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Switch Peer</span>
-              </button>
-            )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={customServerUrl}
+              onChange={(e) => setCustomServerUrl(e.target.value)}
+              disabled={status !== 'idle' && status !== 'disconnected' && status !== 'error'}
+              placeholder={getDefaultSignalingUrl()}
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 font-mono text-emerald-300 focus:outline-none focus:border-emerald-500"
+            />
+            <button
+              onClick={() => setCustomServerUrl(getDefaultSignalingUrl())}
+              className="btn-secondary text-xs px-3 py-1.5"
+            >
+              Reset
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Manual Peer Payload Input Form */}
-        {showManualPeerInput && !verifiedPeer && (
-          <form onSubmit={handleManualPeerValidate} className="mt-4 pt-4 border-t border-slate-800 space-y-3 animate-slide-up">
-            <label className="text-xs font-semibold text-slate-300 block">
-              Paste Peer Public Identity Payload (JSON / QR Data):
-            </label>
-            <textarea
-              rows={3}
-              value={rawPeerJsonInput}
-              onChange={(e) => setRawPeerJsonInput(e.target.value)}
-              placeholder='{"protocol":"whisper-drop","fingerprint":"...","ecdsa":{...},"ecdh":{...}}'
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500 placeholder:text-slate-600"
-            />
-            <div className="flex justify-end gap-2">
+      {/* ======================================================================== */}
+      {/* 1. LOBBY STATE (Unified 1-Screen Pairing Hub)                            */}
+      {/* ========================================================================= */}
+      {status === 'idle' || status === 'disconnected' || status === 'error' ? (
+        <div className="space-y-6">
+          {/* Quick Reconnect Card (If peer is remembered in current browser session) */}
+          {savedPeer && (
+            <div className="glass-panel p-4 rounded-2xl border-emerald-500/30 bg-emerald-950/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-slide-up">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white">Paired Peer Memory</span>
+                    <span className="badge-emerald text-[10px]">Session Paired</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Fingerprint: <strong className="font-mono text-cyan-300">{savedPeer.fingerprint.slice(0, 16)}...</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleStartChat}
+                  className="btn-primary text-xs py-1.5 px-3 flex-1 sm:flex-initial flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Start Chat with Peer</span>
+                </button>
+                <button
+                  onClick={clearSessionPeer}
+                  className="btn-secondary text-xs py-1.5 px-2.5 text-slate-400 hover:text-rose-400"
+                  title="Forget remembered peer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Main 2-Action Pairing Cards: Start Chat vs Join Chat */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Card 1: Start Chat (Host) */}
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl flex flex-col justify-between space-y-6 border-emerald-500/30 hover:border-emerald-500/60 transition-all shadow-xl shadow-emerald-950/20 group">
+              <div className="space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-950/40 group-hover:scale-105 transition-transform">
+                  <Sparkles className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-black text-white">Start Chat</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Host an ephemeral E2EE room. Generates a unified QR code containing your cryptographic keys and room invite for your friend to scan.
+                </p>
+              </div>
+
               <button
-                type="button"
-                onClick={() => setShowManualPeerInput(false)}
-                className="btn-secondary text-xs py-1.5 px-3"
+                onClick={handleStartChat}
+                className="btn-primary w-full py-3.5 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>Start Chat & Show QR</span>
+              </button>
+            </div>
+
+            {/* Card 2: Join Chat (Guest) */}
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl flex flex-col justify-between space-y-6 border-cyan-500/30 hover:border-cyan-500/60 transition-all shadow-xl shadow-cyan-950/20 group">
+              <div className="space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-950/40 group-hover:scale-105 transition-transform">
+                  <Camera className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-black text-white">Join Chat</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Open your camera to scan your friend's QR code. Automatically links keys, joins the room, and derives the E2EE session key in one step.
+                </p>
+              </div>
+
+              <button
+                onClick={handleJoinChatClick}
+                className="btn-secondary w-full py-3.5 text-sm font-bold flex items-center justify-center gap-2 border-cyan-500/40 hover:border-cyan-400 text-cyan-200"
+              >
+                <Camera className="w-4 h-4 text-cyan-400" />
+                <span>Join Chat (Scan QR)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Fallback Section: Manual Code / JSON Payload Entry */}
+          <div className="text-center pt-2">
+            <button
+              onClick={() => setShowManualPeerInput(!showManualPeerInput)}
+              className="text-xs text-slate-400 hover:text-cyan-400 inline-flex items-center gap-1.5 transition-colors underline-offset-4 hover:underline"
+            >
+              <FileCode className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Enter 6-char room code or paste identity JSON manually</span>
+            </button>
+          </div>
+
+          {showManualPeerInput && (
+            <div className="glass-panel p-6 rounded-2xl border-slate-800 space-y-4 animate-slide-up max-w-xl mx-auto">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h4 className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-cyan-400" />
+                  Manual Connect Fallback
+                </h4>
+                <button
+                  onClick={() => setShowManualPeerInput(false)}
+                  className="text-slate-500 hover:text-slate-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Direct Code Join */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-semibold text-slate-400 block">
+                  Join via 6-Character Room Code:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={joinInput}
+                    onChange={(e) => setJoinInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                    placeholder="E.G. A1B2C3"
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 font-mono text-center text-sm font-bold tracking-widest text-cyan-300 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 uppercase"
+                  />
+                  <button
+                    onClick={() => handleDirectJoinRoom(joinInput)}
+                    disabled={joinInput.length < 6}
+                    className="btn-primary text-xs px-4 disabled:opacity-50"
+                  >
+                    Join
+                  </button>
+                </div>
+              </div>
+
+              {/* Paste JSON Form */}
+              <form onSubmit={handleManualPeerValidate} className="space-y-2 pt-2 border-t border-slate-800/80">
+                <label className="text-[11px] font-semibold text-slate-400 block">
+                  Or Paste Raw Peer Public Identity JSON:
+                </label>
+                <textarea
+                  rows={2}
+                  value={rawPeerJsonInput}
+                  onChange={(e) => setRawPeerJsonInput(e.target.value)}
+                  placeholder='{"protocol":"covert-chatter","fingerprint":"...","ecdsa":{...},"ecdh":{...}}'
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500 placeholder:text-slate-600"
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={!rawPeerJsonInput.trim()}
+                    className="btn-secondary text-xs py-1.5 px-4 disabled:opacity-50"
+                  >
+                    Validate & Link JSON
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* ========================================================================= */}
+      {/* 2. JOIN SCANNER MODAL (Immediate Camera Viewfinder for Guest)              */}
+      {/* ========================================================================= */}
+      {isJoinScannerOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="glass-panel p-6 sm:p-8 rounded-2xl max-w-md w-full space-y-6 border-cyan-500/40 animate-scale-up">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Scan Friend's QR Code</h3>
+                  <p className="text-[11px] text-slate-400">Point your camera at their Start Chat screen</p>
+                </div>
+              </div>
+
+              <button
+                onClick={stopCameraScanner}
+                className="p-2 rounded-lg bg-slate-900 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Viewfinder Frame */}
+            <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 min-h-[280px] flex items-center justify-center">
+              <div id={scannerContainerId} className="w-full max-w-xs overflow-hidden rounded-xl" />
+
+              {/* Animated Viewfinder Overlay */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="w-56 h-56 border-2 border-cyan-400/80 rounded-2xl relative animate-pulse shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                  <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-cyan-400 -mt-1 -ml-1 rounded-tl" />
+                  <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-cyan-400 -mt-1 -mr-1 rounded-tr" />
+                  <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-cyan-400 -mb-1 -ml-1 rounded-bl" />
+                  <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-cyan-400 -mb-1 -mr-1 rounded-br" />
+                </div>
+              </div>
+            </div>
+
+            {cameraError && (
+              <div className="p-3 bg-rose-950/50 border border-rose-800/60 rounded-xl text-rose-300 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                <span>{cameraError}</span>
+              </div>
+            )}
+
+            {/* Image File Upload Alternative */}
+            <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-800">
+              <input
+                type="file"
+                ref={qrFileInputRef}
+                onChange={handleQrFileUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <button
+                onClick={() => qrFileInputRef.current?.click()}
+                disabled={isProcessingFile}
+                className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 flex-1 justify-center"
+              >
+                <FileImage className="w-4 h-4 text-emerald-400" />
+                <span>{isProcessingFile ? 'Reading Image...' : 'Upload QR Image'}</span>
+              </button>
+              <button
+                onClick={stopCameraScanner}
+                className="btn-secondary text-xs py-2 px-4"
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={!rawPeerJsonInput.trim()}
-                className="btn-primary text-xs py-1.5 px-4 disabled:opacity-50"
-              >
-                Validate & Link Identity
-              </button>
             </div>
-          </form>
-        )}
-      </div>
-
-      {/* Main Connection State Container */}
-      {status === 'idle' ? (
-        /* Setup / Lobby View */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Card A: Create Room */}
-          <div className={`glass-panel p-6 sm:p-8 rounded-2xl flex flex-col justify-between space-y-6 transition-all ${verifiedPeer ? 'border-emerald-500/20 hover:border-emerald-500/40' : 'opacity-60'}`}>
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-950/40">
-                <Zap className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-white">Create Ephemeral Room</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Act as the host. Creates a 6-character room code and waits for your verified peer to establish the E2EE channel.
-              </p>
-            </div>
-
-            <button
-              onClick={handleCreateRoom}
-              disabled={!verifiedPeer}
-              className="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Create E2EE Ephemeral Room</span>
-            </button>
-          </div>
-
-          {/* Card B: Join Existing Room */}
-          <div className={`glass-panel p-6 sm:p-8 rounded-2xl flex flex-col justify-between space-y-6 transition-all ${verifiedPeer ? 'border-cyan-500/20 hover:border-cyan-500/40' : 'opacity-60'}`}>
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-950/40">
-                <Users className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-white">Join Ephemeral Room</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Enter the 6-character room code given by the host to connect and derive the AES-GCM session key.
-              </p>
-            </div>
-
-            <form onSubmit={handleJoinRoom} className="space-y-3">
-              <div>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={joinInput}
-                  disabled={!verifiedPeer}
-                  onChange={(e) => setJoinInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                  placeholder="E.G. A1B2C3"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 font-mono text-center text-lg font-bold tracking-widest text-cyan-300 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 uppercase disabled:opacity-50"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={!verifiedPeer || joinInput.length < 6}
-                className="btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Users className="w-4 h-4 text-cyan-400" />
-                <span>Join Room</span>
-              </button>
-            </form>
           </div>
         </div>
-      ) : status === 'waiting' ? (
-        /* Waiting for Peer State (Host) */
-        <div className="glass-panel p-8 sm:p-12 rounded-2xl text-center max-w-lg mx-auto space-y-6 animate-scale-up border-emerald-500/30">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto shadow-lg shadow-emerald-950/50">
-            <Radio className="w-8 h-8 animate-pulse" />
-          </div>
+      )}
 
-          <div className="space-y-2">
+      {/* ========================================================================= */}
+      {/* 3. HOST WAITING STATE (Full-Screen High-Density Unified QR Code)          */}
+      {/* ========================================================================= */}
+      {status === 'waiting' && roomCode && (
+        <div className="glass-panel p-8 sm:p-10 rounded-3xl text-center max-w-lg mx-auto space-y-6 animate-scale-up border-emerald-500/40 shadow-2xl shadow-emerald-950/40">
+          <div className="space-y-1">
             <span className="badge-emerald text-xs">Room Created & Ready</span>
-            <h3 className="text-2xl font-black text-white">Waiting for Peer to Join</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Share this 6-character code with your verified peer. WebRTC negotiation and AES-GCM session key derivation will execute automatically.
+            <h3 className="text-2xl font-black text-white">Show this to your friend</h3>
+            <p className="text-xs text-slate-400">
+              Have your friend tap "Join Chat" and scan this QR code to connect.
             </p>
           </div>
 
-          {/* Prominent Room Code Display */}
-          <div className="bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-4 sm:p-6 relative group max-w-xs mx-auto shadow-inner">
-            <div className="text-xs uppercase font-semibold text-slate-400 mb-1">Room Code</div>
-            <div className="font-mono text-3xl sm:text-4xl font-extrabold text-emerald-400 tracking-widest select-all">
-              {roomCode}
-            </div>
-            <button
-              onClick={handleCopyRoomCode}
-              className="mt-3 btn-primary text-xs py-1.5 px-4 inline-flex items-center gap-1.5"
-            >
-              {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedCode ? 'Copied Code!' : 'Copy Code'}</span>
-            </button>
+          {/* High Density QR Code */}
+          <div className="p-5 bg-white rounded-2xl shadow-2xl inline-block mx-auto transition-transform hover:scale-105">
+            <QRCodeSVG
+              value={hostQrPayload}
+              size={220}
+              level="M"
+              includeMargin={false}
+            />
           </div>
 
-          <div className="flex items-center justify-center gap-3 pt-2">
+          {/* Room Code Display with 1-Click Copy */}
+          <div className="space-y-2">
+            <span className="text-[11px] text-slate-400 uppercase tracking-widest font-semibold">
+              Or Share Room Code:
+            </span>
+            <div className="flex items-center justify-center gap-2">
+              <span className="font-mono text-3xl font-black tracking-widest text-emerald-300 bg-slate-950 px-5 py-2 rounded-xl border border-slate-800 select-all shadow-inner">
+                {roomCode}
+              </span>
+              <button
+                onClick={handleCopyRoomCode}
+                className="p-3 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white transition-all shadow-lg"
+                title="Copy Room Code"
+              >
+                {copiedCode ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-400 pt-2">
+            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+            <span>Awaiting peer connection...</span>
+          </div>
+
+          <div className="pt-2">
             <button
               onClick={handleDisconnect}
-              className="btn-danger text-xs py-2 px-4 flex items-center gap-1.5"
+              className="btn-secondary text-xs py-2 px-4"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Cancel & Close Room</span>
+              Cancel
             </button>
           </div>
         </div>
-      ) : status === 'creating' || status === 'joining' || status === 'connecting' ? (
-        /* Connecting / Negotiating State */
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. CONNECTING / NEGOTIATING STATE                                         */}
+      {/* ========================================================================= */}
+      {(status === 'creating' || status === 'joining' || status === 'connecting') && status !== 'waiting' && (
         <div className="glass-panel p-8 sm:p-12 rounded-2xl text-center max-w-lg mx-auto space-y-6 animate-scale-up border-cyan-500/30">
           <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto shadow-lg shadow-cyan-950/50">
             <RefreshCw className="w-8 h-8 animate-spin" />
@@ -719,13 +960,13 @@ export default function ConnectRoom({
 
           <div className="space-y-2">
             <span className="badge-cyan text-xs">
-              {status === 'creating' ? 'Creating Room...' : status === 'joining' ? 'Joining Room...' : 'Negotiating WebRTC & Deriving Keys...'}
+              {status === 'creating' ? 'Creating Room...' : status === 'joining' ? 'Joining Room...' : 'Negotiating E2EE Session...'}
             </span>
             <h3 className="text-xl font-bold text-white">
-              {status === 'connecting' ? 'Connecting & Deriving AES-GCM Key...' : 'Contacting Signaling Server...'}
+              {verifiedPeer ? `Connecting to ${verifiedPeer.fingerprint.slice(0, 10)}...` : 'Establishing WebRTC Tunnel...'}
             </h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              {statusDetails?.message || 'Exchanging SDP session descriptions, ICE candidates, and performing ECDH shared secret key agreement.'}
+              {statusDetails?.message || 'Exchanging cryptographic key identities and deriving non-extractable AES-256-GCM session key.'}
             </p>
           </div>
 
@@ -744,8 +985,12 @@ export default function ConnectRoom({
             </button>
           </div>
         </div>
-      ) : status === 'connected' ? (
-        /* Connected State: Live Ephemeral E2EE Chat Box with File Dropzone */
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. CONNECTED STATE (Active Ephemeral E2EE Chat Room)                       */}
+      {/* ========================================================================= */}
+      {status === 'connected' && (
         <div 
           onDragOver={handleDragOver}
           onDragEnter={handleDragOver}
@@ -813,7 +1058,7 @@ export default function ConnectRoom({
                   <span>Room: <strong className="font-mono text-emerald-300">{roomCode}</strong></span>
                   <span>•</span>
                   <span>
-                    Peer: <strong className="font-mono text-cyan-300">{verifiedPeer?.fingerprint || 'Verified'}</strong>
+                    Peer: <strong className="font-mono text-cyan-300">{verifiedPeer?.fingerprint ? verifiedPeer.fingerprint.slice(0, 16) + '...' : 'Authenticated Peer'}</strong>
                   </span>
                 </div>
               </div>
@@ -914,63 +1159,62 @@ export default function ConnectRoom({
                           </div>
 
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-bold text-white truncate" title={msg.fileName}>
-                              {msg.fileName}
-                            </h4>
-                            <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
-                              <span>{formatFileSize(msg.fileSize)}</span>
-                              <span>•</span>
-                              <span className="font-mono text-cyan-300">
-                                {msg.status === 'completed' ? 'E2EE Verified' : `${msg.progress || 0}%`}
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="text-xs font-bold text-white truncate" title={msg.fileName}>
+                                {msg.fileName}
+                              </h4>
+                              <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                                {formatFileSize(msg.fileSize)}
                               </span>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* Streaming Progress Bar */}
-                        {msg.status !== 'completed' ? (
-                          <div className="mt-3 space-y-1.5">
-                            <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
-                              <div
-                                className="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full transition-all duration-200 rounded-full"
-                                style={{ width: `${Math.max(5, msg.progress || 0)}%` }}
-                              />
-                            </div>
-                            <div className="flex justify-between items-center text-[10px] text-slate-400">
-                              <span>{isMe ? 'Encrypting & Streaming...' : 'Receiving & Decrypting...'}</span>
-                              <span className="font-mono font-bold text-emerald-400">{msg.progress || 0}%</span>
-                            </div>
-                          </div>
-                        ) : (
-                          /* Completed Download Action */
-                          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                            {msg.blobUrl ? (
-                              <a
-                                href={msg.blobUrl}
-                                download={msg.fileName}
-                                className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 w-full justify-center"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Download File ({formatFileSize(msg.fileSize)})</span>
-                              </a>
+                            {/* Progress or Actions */}
+                            {msg.status === 'transferring' ? (
+                              <div className="mt-2 space-y-1">
+                                <div className="flex justify-between text-[10px] text-cyan-300">
+                                  <span>{isMe ? 'Streaming chunks...' : 'Receiving & verifying...'}</span>
+                                  <span>{msg.progress || 0}%</span>
+                                </div>
+                                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-150"
+                                    style={{ width: `${msg.progress || 0}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ) : msg.status === 'completed' && msg.blobUrl ? (
+                              <div className="mt-3 flex items-center justify-between gap-2">
+                                <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Decrypted in RAM</span>
+                                </span>
+                                <a
+                                  href={msg.blobUrl}
+                                  download={msg.fileName}
+                                  className="btn-primary text-xs py-1 px-3 inline-flex items-center gap-1.5"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Download</span>
+                                </a>
+                              </div>
                             ) : (
-                              <span className="text-[11px] text-amber-400 italic">File buffer wiped</span>
+                              <p className="text-[10px] text-rose-400 mt-1">Transfer error or interrupted.</p>
                             )}
                           </div>
-                        )}
+                        </div>
                       </div>
                     ) : (
-                      /* Standard Text Message Bubble */
+                      /* Text Message Bubble */
                       <div
-                        className={`max-w-md px-4 py-2.5 rounded-2xl text-sm leading-relaxed relative group ${
+                        className={`p-3.5 rounded-2xl text-xs max-w-sm sm:max-w-md break-words shadow-md transition-all ${
                           isMe
-                            ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-br-none shadow-md shadow-emerald-950/50'
+                            ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-br-none shadow-emerald-950/30'
                             : isBurn
-                            ? 'bg-slate-900 text-slate-100 border border-amber-500/40 rounded-bl-none shadow-lg shadow-amber-950/20'
-                            : 'bg-slate-800/90 text-slate-100 border border-slate-700/80 rounded-bl-none shadow'
+                            ? 'bg-slate-900 text-slate-100 border border-amber-500/40 rounded-bl-none shadow-amber-950/20'
+                            : 'bg-slate-900 text-slate-100 border border-slate-800 rounded-bl-none'
                         }`}
                       >
-                        <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                        {msg.text}
                       </div>
                     )}
                   </div>
@@ -980,92 +1224,68 @@ export default function ConnectRoom({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Pass 5: Attached File Staging Modal / Bar */}
+          {/* Staged File Attachment Preview Bar */}
           {attachedFile && (
-            <div className="bg-slate-900 border-t border-cyan-500/30 p-3.5 space-y-3 animate-slide-up">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-                    <File className="w-4 h-4" />
-                  </div>
-                  <div className="truncate">
-                    <div className="text-xs font-bold text-white truncate">{attachedFile.name}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">{formatFileSize(attachedFile.size)}</div>
-                  </div>
+            <div className="p-3 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-slide-up">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0">
+                  <File className="w-4 h-4" />
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setAttachedFile(null)}
-                  disabled={isSendingFile}
-                  className="p-1 rounded-lg text-slate-400 hover:text-rose-400 transition-colors"
-                  title="Remove attached file"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-white truncate max-w-xs">{attachedFile.name}</p>
+                  <p className="text-[10px] text-slate-400">{formatFileSize(attachedFile.size)} • 16KB encrypted chunks</p>
+                </div>
               </div>
 
-              {/* Expiry Selector Bar & Burn on Read for Files */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-semibold text-slate-400">File Lifespan:</span>
-                  <div className="flex rounded-lg bg-slate-950 p-0.5 border border-slate-800">
-                    {FILE_TTL_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.seconds}
-                        type="button"
-                        onClick={() => setFileTtlSeconds(opt.seconds)}
-                        className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all ${
-                          fileTtlSeconds === opt.seconds
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              {/* TTL and Burn on Read Options for File */}
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <select
+                  value={fileTtlSeconds}
+                  onChange={(e) => setFileTtlSeconds(Number(e.target.value))}
+                  className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-cyan-300 focus:outline-none"
+                >
+                  {FILE_TTL_OPTIONS.map((opt) => (
+                    <option key={opt.seconds} value={opt.seconds}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
 
                 <button
                   type="button"
                   onClick={() => setFileBurnOnRead(!fileBurnOnRead)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all ${
+                  className={`text-xs py-1 px-2.5 rounded-lg border flex items-center gap-1 transition-all ${
                     fileBurnOnRead
-                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-300'
                   }`}
-                  title="Self-destruct 5 seconds after recipient renders/downloads"
+                  title="Burn on Read: file self-destructs 5s after recipient downloads"
                 >
-                  <Flame className={`w-3 h-3 ${fileBurnOnRead ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
-                  <span>Burn on Read (5s)</span>
+                  <Flame className={`w-3.5 h-3.5 ${fileBurnOnRead ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
+                  <span className="text-[11px]">Burn</span>
                 </button>
-              </div>
 
-              <div className="flex justify-end gap-2 pt-1">
                 <button
-                  type="button"
                   onClick={() => setAttachedFile(null)}
-                  disabled={isSendingFile}
-                  className="btn-secondary text-xs py-1.5 px-3"
+                  className="p-1 rounded-lg text-slate-400 hover:text-rose-400"
                 >
-                  Cancel
+                  <X className="w-4 h-4" />
                 </button>
+
                 <button
-                  type="button"
                   onClick={handleSendAttachedFile}
                   disabled={isSendingFile}
-                  className="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5 disabled:opacity-50"
+                  className="btn-primary text-xs py-1 px-3 flex items-center gap-1.5"
                 >
                   {isSendingFile ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Streaming Chunks...</span>
+                      <span>Sending...</span>
                     </>
                   ) : (
                     <>
-                      <UploadCloud className="w-3.5 h-3.5" />
-                      <span>Send Encrypted File</span>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send File</span>
                     </>
                   )}
                 </button>
@@ -1073,98 +1293,48 @@ export default function ConnectRoom({
             </div>
           )}
 
-          {/* Chat Controls & Input Bar */}
-          <div className="bg-slate-900/90 border-t border-slate-800 p-3 space-y-2">
-            {/* Ephemeral Toggles Bar for Text */}
-            <div className="flex items-center justify-between px-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setBurnOnReadEnabled(!burnOnReadEnabled)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all ${
-                  burnOnReadEnabled
-                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-sm shadow-amber-950/50'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                }`}
-                title="Burn text message 5 seconds after recipient renders it"
-              >
-                <Flame className={`w-3.5 h-3.5 ${burnOnReadEnabled ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
-                <span>Burn on read (5s)</span>
-                {burnOnReadEnabled && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block ml-0.5" />}
-              </button>
-
-              <div className="text-[11px] text-slate-400 font-mono flex items-center gap-2">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-cyan-400" />
-                  <span>Text TTL: 60s</span>
-                </span>
-                <span>•</span>
-                <span className="text-emerald-400">16KB Chunking E2EE</span>
-              </div>
-            </div>
-
-            {/* Message Input Field with File Attachment Button */}
-            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 transition-colors"
-                title="Attach encrypted file (Max 25MB)"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder={
-                  burnOnReadEnabled 
-                    ? "Type a burn-on-read message (5s timer)..." 
-                    : "Type an encrypted ephemeral message..."
-                }
-                className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-              />
-
-              <button
-                type="submit"
-                disabled={!inputText.trim()}
-                className="btn-primary px-4 py-2.5 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {burnOnReadEnabled ? <Flame className="w-4 h-4 text-amber-200" /> : <Send className="w-4 h-4" />}
-                <span>Send</span>
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : (
-        /* Disconnected / Error State */
-        <div className="glass-panel p-8 sm:p-12 rounded-2xl text-center max-w-lg mx-auto space-y-6 animate-scale-up border-rose-500/30 shadow-2xl">
-          <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
-            <AlertCircle className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-2">
-            <span className="badge-cyan text-xs">
-              {status === 'disconnected' ? 'Session Terminated' : 'Connection Failed'}
-            </span>
-            <h3 className="text-xl font-bold text-white">
-              {status === 'disconnected' ? 'Peer Disconnected & Memory Purged' : 'Unable to Connect'}
-            </h3>
-            <p className="text-sm text-slate-300 leading-relaxed max-w-sm mx-auto">
-              {statusDetails?.message ||
-                'The session was closed. All ephemeral message history, streaming files, room codes, and AES session keys have been permanently wiped from volatile RAM.'}
-            </p>
-          </div>
-
-          <div className="pt-2">
+          {/* Chat Message Input Bar */}
+          <form onSubmit={handleSendMessage} className="p-3 bg-slate-900 border-t border-slate-800 flex items-center gap-2">
             <button
-              onClick={handleDisconnect}
-              className="btn-primary text-xs py-2.5 px-6 inline-flex items-center gap-2"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-all shrink-0"
+              title="Attach File (Up to 25MB)"
             >
-              <RefreshCw className="w-4 h-4" />
-              <span>Return to Room Lobby</span>
+              <Paperclip className="w-4 h-4" />
             </button>
-          </div>
+
+            <button
+              type="button"
+              onClick={() => setBurnOnReadEnabled(!burnOnReadEnabled)}
+              className={`p-2.5 rounded-xl border flex items-center gap-1.5 text-xs transition-all shrink-0 ${
+                burnOnReadEnabled
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-300'
+              }`}
+              title="Burn on Read: message self-destructs 5s after peer views it"
+            >
+              <Flame className={`w-4 h-4 ${burnOnReadEnabled ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
+              <span className="hidden sm:inline">Burn (5s)</span>
+            </button>
+
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Send an end-to-end encrypted ephemeral message..."
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+            />
+
+            <button
+              type="submit"
+              disabled={!inputText.trim()}
+              className="btn-primary text-xs py-2.5 px-4 flex items-center gap-1.5 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Send</span>
+            </button>
+          </form>
         </div>
       )}
     </div>

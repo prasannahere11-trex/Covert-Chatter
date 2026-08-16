@@ -52,7 +52,7 @@ export default function KeyDetails({ identity, onShowToast }) {
               <span className="badge-emerald text-[11px]">Hardware & Sandboxed Keystore</span>
             </div>
             <p className="text-sm text-slate-300 leading-relaxed">
-              When Whisper Drop generates your cryptographic keypairs, the private keys are created with{' '}
+              When Covert Chatter generates your cryptographic keypairs, the private keys are created with{' '}
               <code className="font-mono text-emerald-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 text-xs">
                 extractable: false
               </code>
