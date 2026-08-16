@@ -33,7 +33,7 @@ import {
   CheckCircle2,
   Loader2
 } from 'lucide-react';
-import { PeerSession } from '../utils/webrtc';
+import { PeerSession, getDefaultSignalingUrl } from '../utils/webrtc';
 import { validatePeerIdentityPayload } from '../utils/crypto';
 import { 
   DEFAULT_TTL_SECONDS, 
@@ -71,7 +71,7 @@ export default function ConnectRoom({
   const [messages, setMessages] = useState([]); // VOLATILE RAM INVARIANT
   const [inputText, setInputText] = useState('');
   const [burnOnReadEnabled, setBurnOnReadEnabled] = useState(false);
-  const [customServerUrl, setCustomServerUrl] = useState('ws://localhost:8080');
+  const [customServerUrl, setCustomServerUrl] = useState(getDefaultSignalingUrl());
   const [showServerConfig, setShowServerConfig] = useState(false);
   const [rawPeerJsonInput, setRawPeerJsonInput] = useState('');
   const [showManualPeerInput, setShowManualPeerInput] = useState(false);
@@ -83,6 +83,9 @@ export default function ConnectRoom({
   const [fileBurnOnRead, setFileBurnOnRead] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isSendingFile, setIsSendingFile] = useState(false);
+
+  // Pass 6 Connection Quality State ('direct' | 'relay' | null)
+  const [connectionType, setConnectionType] = useState(null);
 
   const sessionRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -99,6 +102,35 @@ export default function ConnectRoom({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Pass 6: Check connection quality / candidate pair type (Direct vs Relayed via TURN)
+  // Note: Even in "Relayed" mode, the TURN server only sees encrypted ciphertext,
+  // never plaintext — the E2EE from Pass 3 still fully applies.
+  useEffect(() => {
+    if (status !== 'connected') {
+      setConnectionType(null);
+      return;
+    }
+
+    let isMounted = true;
+    const checkType = async () => {
+      if (sessionRef.current) {
+        const type = await sessionRef.current.getConnectionType();
+        if (isMounted && type && type !== 'unknown') {
+          setConnectionType(type);
+        }
+      }
+    };
+
+    checkType();
+    // Re-check after 1.5s to ensure candidate pair nomination stats are settled
+    const timer = setTimeout(checkType, 1500);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [status]);
 
   // 1-Second Ticking & Ephemeral Garbage Collection Loop (Messages + Files)
   useEffect(() => {
@@ -465,7 +497,7 @@ export default function ConnectRoom({
           <div className="mt-4 p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2 animate-slide-up text-xs">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-slate-300">Signaling Server URL</span>
-              <span className="text-[11px] text-emerald-400">Default: ws://localhost:8080</span>
+              <span className="text-[11px] text-emerald-400">Default: {getDefaultSignalingUrl()}</span>
             </div>
             <div className="flex gap-2">
               <input
@@ -473,11 +505,11 @@ export default function ConnectRoom({
                 value={customServerUrl}
                 onChange={(e) => setCustomServerUrl(e.target.value)}
                 disabled={status !== 'idle' && status !== 'disconnected' && status !== 'error'}
-                placeholder="ws://localhost:8080"
+                placeholder={getDefaultSignalingUrl()}
                 className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 font-mono text-emerald-300 focus:outline-none focus:border-emerald-500"
               />
               <button
-                onClick={() => setCustomServerUrl('ws://localhost:8080')}
+                onClick={() => setCustomServerUrl(getDefaultSignalingUrl())}
                 className="btn-secondary text-xs px-3 py-1.5"
               >
                 Reset
@@ -749,12 +781,33 @@ export default function ConnectRoom({
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#10b981]" />
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">Direct P2P Encrypted Session</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-bold text-white">
+                    {connectionType === 'relay' ? 'Relayed P2P Encrypted Session' : 'Direct P2P Encrypted Session'}
+                  </span>
                   <span className="badge-emerald text-[10px] flex items-center gap-1">
                     <Lock className="w-3 h-3" />
                     <span>AES-256-GCM + ECDSA</span>
                   </span>
+
+                  {/* Pass 6 Connection Quality Indicator Badge */}
+                  {connectionType === 'relay' ? (
+                    <span 
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 border border-amber-500/30 text-amber-300 shadow-sm animate-fade-in"
+                      title="Relayed via TURN server across restrictive NATs. All data remains end-to-end encrypted with zero plaintext exposure."
+                    >
+                      <Server className="w-2.5 h-2.5 text-amber-400" />
+                      <span>Relayed connection</span>
+                    </span>
+                  ) : connectionType === 'direct' ? (
+                    <span 
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 shadow-sm animate-fade-in"
+                      title="Direct peer-to-peer connection established via local host/STUN reflexive candidates."
+                    >
+                      <Zap className="w-2.5 h-2.5 text-emerald-400" />
+                      <span>Direct connection</span>
+                    </span>
+                  ) : null}
                 </div>
                 <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
                   <span>Room: <strong className="font-mono text-emerald-300">{roomCode}</strong></span>

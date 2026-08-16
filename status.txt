@@ -2,11 +2,11 @@
                       COVERT CHATTER (WHISPER DROP)
               COMPLETE PROJECT STATUS & FULL CHRONOLOGICAL RECORD
 ================================================================================
-Last Updated: 2026-08-16 12:51:00 IST
+Last Updated: 2026-08-16 19:10:00 IST
 Repository Location: e:\Covert Chat
 Git Branch: main
-Latest Git Commit: 371644f (Pass 5 complete in working tree)
-Overall System Health: 100% OPERATIONAL & VERIFIED (Passes 1, 2, 3, 4, & 5 Complete)
+Latest Git Commit: 82295f1 (feat: complete Pass 6 TURN traversal, single-tunnel WS proxy, and ngrok allowedHosts)
+Overall System Health: 100% OPERATIONAL & VERIFIED (Passes 1, 2, 3, 4, 5, & 6 Complete)
 
 ================================================================================
 1. PROJECT PURPOSE, MISSION & CORE SECURITY MODEL
@@ -24,9 +24,11 @@ Foundational Security & Cryptographic Principles:
      are generated with `extractable: false`.
    - Private key bytes remain locked inside the browser's cryptographic module
      and cannot be extracted via JavaScript or malicious XSS scripts.
-3. Direct Peer-to-Peer Data Channels (Pass 2):
-   - All communications flow directly between browser instances over WebRTC
-     `RTCDataChannel` ("chat") negotiated via STUN (`stun:stun.l.google.com:19302`).
+3. Direct Peer-to-Peer Data Channels & Relays (Pass 2 & Pass 6):
+   - Communications flow directly between browser instances over WebRTC `RTCDataChannel` ("chat").
+   - Negotiated via Google STUN (`stun:stun.l.google.com:19302`) and optional TURN servers (`turn:...`).
+   - Even when passing through TURN relays on restrictive symmetric NATs, the relay only forwards
+     encrypted DTLS/SCTP ciphertext — zero plaintext exposure.
 4. Authenticated End-to-End Encryption - E2EE (Pass 3):
    - Ephemeral AES-256-GCM symmetric session keys derived via ECDH Diffie-Hellman.
    - Fresh, cryptographically secure 12-byte (96-bit) IVs generated for every single message.
@@ -39,50 +41,60 @@ Foundational Security & Cryptographic Principles:
    - Zero Persistence Invariant: Messages are held ONLY in transient React state (volatile RAM).
      Never written to localStorage, sessionStorage, or IndexedDB.
    - Memory is immediately purged on room exit, tab close, or 30-second background blur.
+6. Encrypted Streaming File Drops (Pass 5):
+   - 16KB chunked streaming over WebRTC DataChannel.
+   - Chunk-level AES-256-GCM encryption with fresh IVs + ECDSA signatures.
+   - SCTP backpressure control (`bufferedAmountLowThreshold` 32KB / 64KB high watermark).
+   - In-memory `Blob` URLs auto-revoked (`URL.revokeObjectURL`) upon expiry or room teardown.
 
 ================================================================================
 2. LIVE ACTIVE RUNTIME SERVICES & ENVIRONMENT
 ================================================================================
 * Backend Signaling Server:
-  - Status: ACTIVE & RUNNING (Background Daemon)
-  - Endpoint: ws://localhost:8080
+  - Status: ACTIVE & RUNNING (Background Daemon, Task ID: task-18)
+  - Endpoint: ws://localhost:8080 (also proxied via /ws on client)
   - Process: node server.js
   - Process Working Directory: e:\Covert Chat\server
   - Role: Relays WebRTC session descriptions (SDP) and ICE candidates between peers; zero storage.
 
 * Frontend Client Application:
-  - Status: ACTIVE & RUNNING (Vite Dev Server)
+  - Status: ACTIVE & RUNNING (Vite Dev Server, Task ID: task-151)
   - Local URL: http://localhost:5173
+  - Network URL: http://192.168.31.25:5173/
+  - Single-Tunnel WebSocket Proxy: Path `/ws` forwards automatically to `http://localhost:8080` (ws: true)
+  - Allowed Remote Hosts: `.ngrok-free.dev`, `.ngrok-free.app`
+  - Dynamic Signaling Resolution: `getDefaultSignalingUrl()` auto-derives `ws://` / `wss://` from window.location
   - Framework: React 19.0.0 + Vite 6.1.0 (Module Bundler)
   - Working Directory: e:\Covert Chat\client
 
 * Build & Bundling Health:
-  - Production Build: PASSING (npm run build)
-  - Modules Transformed: 1,844 modules
-  - Bundle Size: index.html (1.17 kB), index.css (13.22 kB), index.js (639.07 kB)
-  - Compile Time: ~4.74s with 0 warnings/errors.
+  - Production Build: PASSING (`npm run build`)
+  - Modules Transformed: 1,845 modules
+  - Bundle Size: index.html (1.17 kB), index.css (13.22 kB), index.js (659.08 kB)
+  - Compile Time: ~4.35s with 0 errors.
 
 ================================================================================
 3. SYSTEM ARCHITECTURE & CRYPTOGRAPHIC TOPOLOGY
 ================================================================================
 
- [ Browser Peer A (Port 5173) ] <==== WebRTC P2P DataChannel ("chat") ====> [ Browser Peer B (Port 5173) ]
-   - Persistent ID: IndexedDB                                                 - Persistent ID: IndexedDB
-   - Signing: ECDSA NIST P-256                                                - Signing: ECDSA NIST P-256
-   - Agreement: ECDH NIST P-256                                               - Agreement: ECDH NIST P-256
-   - Fingerprint: SHA-256 Digest                                              - Fingerprint: SHA-256 Digest
-   - Derived Session Key: AES-256-GCM (ECDH Derived)                          - Derived Session Key: AES-256-GCM (ECDH Derived)
-   - Ephemeral Memory Store: Transient React RAM Only                         - Ephemeral Memory Store: Transient React RAM Only
-   - Inner Payload: { id, text, sentAt, expiresAt, burnOnRead }               - Inner Payload: { id, text, sentAt, expiresAt, burnOnRead }
-   - Wire Envelope: { iv, ciphertext, signature, id, timestamp }              - Wire Envelope: { iv, ciphertext, signature, id, timestamp }
-   - RTCPeerConnection (Google STUN)                                          - RTCPeerConnection (Google STUN)
-   - Inbound ICE Queue Buffer                                                 - Inbound ICE Queue Buffer
-         \                                                                                 /
-          \---- (Ephemeral WebSocket Signaling Relay: ws://localhost:8080) ----------------/
+ [ Browser Peer A ] <==== WebRTC P2P DataChannel ("chat") ====> [ Browser Peer B ]
+   - Persistent ID: IndexedDB                                     - Persistent ID: IndexedDB
+   - Signing: ECDSA NIST P-256                                    - Signing: ECDSA NIST P-256
+   - Agreement: ECDH NIST P-256                                   - Agreement: ECDH NIST P-256
+   - Fingerprint: SHA-256 Digest                                  - Fingerprint: SHA-256 Digest
+   - Derived Session Key: AES-256-GCM (ECDH Derived)              - Derived Session Key: AES-256-GCM (ECDH Derived)
+   - Connection Quality: Direct (STUN) or Relayed (TURN)          - Connection Quality: Direct (STUN) or Relayed (TURN)
+   - Ephemeral Memory Store: Transient React RAM Only             - Ephemeral Memory Store: Transient React RAM Only
+   - Inner Payload: { id, text, sentAt, expiresAt, burnOnRead }   - Inner Payload: { id, text, sentAt, expiresAt, burnOnRead }
+   - Wire Envelope: { iv, ciphertext, signature, id, timestamp }  - Wire Envelope: { iv, ciphertext, signature, id, timestamp }
+   - RTCPeerConnection (STUN + Configured TURN Relays)            - RTCPeerConnection (STUN + Configured TURN Relays)
+   - Inbound ICE Queue Buffer                                     - Inbound ICE Queue Buffer
+         \                                                                     /
+          \---- (WebSocket Signaling Relay /ws -> ws://localhost:8080) -------/
                                          |
                                          v
                              [ Node.js Signaling Server ]
-                              - Port: 8080
+                              - Port: 8080 (Proxied at /ws)
                               - In-Memory Maps (rooms, clientRooms)
                               - Zero Logs / Zero Persistence
 
@@ -98,53 +110,38 @@ Foundational Security & Cryptographic Principles:
 * Package Config: package.json (whisper-drop-server v1.0.0, dependency: ws@^8.18.0)
 * Documentation: README.md
 
-Key Architecture in server.js:
-1. `rooms`: Map<roomCode, Set<WebSocket>> (holds room peer socket sets in memory).
-2. `clientRooms`: Map<WebSocket, roomCode> (maps client socket to active room code).
-3. `generateRoomCode()`: Uses `crypto.randomBytes(3).toString('hex').toUpperCase()` to create unique 6-character room codes.
-4. `leaveAndDestroyRoom(ws)`: Immediately closes remaining peer socket with {"type": "peer-disconnected"}, deletes room from memory, and triggers garbage collection.
-5. Signaling Event Routing:
-   - "create": Registers host, assigns room code, replies with {"type": "created", "room": code}.
-   - "join": Validates room existence and capacity (max 2 peers), replies with {"type": "joined", "room": code}, and notifies host with {"type": "ready"}.
-   - "offer", "answer", "candidate": Transparently forwards payload to the other peer without logging.
-   - "close" / "error": Automatically executes room destruction.
+--------------------------------------------------------------------------------
+[B] FRONTEND CORE BUILD & STACK (client/)
+--------------------------------------------------------------------------------
+* Location: e:\Covert Chat\client
+* Stack: React 19.0.0, Vite 6.1.0, Lucide React 1.16.0, QRCode.react 4.2.0, html5-qrcode 2.3.8
+* Vite Config: `client/vite.config.js`
+  - Single-tunnel WebSocket proxy (`/ws` -> `http://localhost:8080` with `ws: true`)
+  - Allowed remote hosts for ngrok (`allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app']`)
+* Environment Configuration:
+  - `client/.env.example`: Safe open-source template for `VITE_TURN_URL`, `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`.
+  - `client/.env`: Local gitignored credentials.
 
 --------------------------------------------------------------------------------
-[B] FRONTEND CRYPTOGRAPHY ENGINE (client/src/utils/crypto.js)
+[C] CRYPTOGRAPHIC CORE ENGINE (client/src/utils/crypto.js)
 --------------------------------------------------------------------------------
 * Location: e:\Covert Chat\client\src\utils\crypto.js
-
-Key Cryptographic Functions:
-1. `generateSigningKeypair()`: Generates ECDSA NIST P-256 keypair with `extractable: false` for digital signatures.
-2. `generateAgreementKeypair()`: Generates ECDH NIST P-256 keypair with `extractable: false` for key agreement.
-3. `exportPublicJWKs()`: Exports canonical public JSON Web Keys.
-4. `computeFingerprint()`: Computes deterministic SHA-256 digest of public key coordinates, formatted as readable uppercase hex chunks (`4A7B 9C12 ...`).
-5. `deriveSharedSecret(myEcdhPrivateKey, peerEcdhPublicKeyJWK)`: Computes shared curve point via ECDH Diffie-Hellman and derives a 256-bit AES-GCM CryptoKey (`extractable: false`).
-6. `validatePeerIdentityPayload()`: Verifies QR/JSON identity structure and curves.
+* Functions:
+  - `generateUserIdentity()`: Generates ECDSA P-256 + ECDH P-256 keypairs (`extractable: false`).
+  - `computeFingerprint()`: Computes 64-char hex SHA-256 digest of concatenated public keys.
+  - `exportPublicJWK()`: Exports only public JWKs for peer exchange.
+  - `deriveSharedSecret()`: Derives 256-bit AES-GCM session key from local private ECDH key + remote public ECDH JWK.
+  - `validatePeerIdentityPayload()`: Strictly validates schema and base64url keys of peer identity inputs.
 
 --------------------------------------------------------------------------------
-[C] MESSAGE ENCRYPTION & SIGNING SUBSYSTEM (client/src/utils/encryption.js)
+[D] MESSAGE ENCRYPTION & SIGNING LAYER (client/src/utils/encryption.js)
 --------------------------------------------------------------------------------
 * Location: e:\Covert Chat\client\src\utils\encryption.js
-
-Key Functions:
-1. `encryptMessage(sessionKey, plaintext)`:
-   - Generates a fresh random 12-byte (96-bit) IV for every message (preventing AES-GCM nonce-reuse attacks).
-   - Encrypts plaintext via AES-GCM with a 128-bit authentication tag.
-2. `decryptMessage(sessionKey, iv, ciphertext)`: Authenticates and decrypts ciphertext into UTF-8 plaintext.
-3. `signMessage(myEcdsaPrivateKey, ciphertext)`: Digitally signs ciphertext bytes using ECDSA SHA-256.
-4. `verifyMessage(peerEcdsaPublicKeyJWK, ciphertext, signature)`: Validates sender's signature before decryption. Silently drops invalid messages without leaking information.
-
---------------------------------------------------------------------------------
-[D] EPHEMERAL LIFECYCLE & ANTI-PERSISTENCE (client/src/utils/ephemeral.js)
---------------------------------------------------------------------------------
-* Location: e:\Covert Chat\client\src\utils\ephemeral.js
-
-Key Invariants:
-1. `createEphemeralPayload(text, options)`: Embeds tamper-proof `sentAt`, `expiresAt` (60s TTL), and `burnOnRead` flags inside the authenticated payload prior to encryption.
-2. `getRemainingSeconds(message, currentTime)`: Computes remaining lifespan in seconds.
-3. `isMessageExpired(message, currentTime)`: Checks if a message has reached its expiration deadline.
-4. Constants: `DEFAULT_TTL_SECONDS = 60`, `BURN_ON_READ_DELAY_SECONDS = 5`, `BACKGROUND_BLUR_PURGE_TIMEOUT_MS = 30000`.
+* Functions:
+  - `encryptMessage()`: Encrypts UTF-8 plaintext with AES-256-GCM using fresh 12-byte IV.
+  - `decryptMessage()`: Decrypts AES-256-GCM ciphertext using derived session key.
+  - `signMessage()`: Signs base64 ciphertext with sender's ECDSA P-256 private key (IEEE P1363).
+  - `verifyMessage()`: Verifies digital signature against sender's ECDSA public key.
 
 --------------------------------------------------------------------------------
 [E] PERSISTENT IDENTITY STORAGE LAYER (client/src/utils/db.js)
@@ -160,12 +157,13 @@ Key Invariants:
 * Location: e:\Covert Chat\client\src\utils\webrtc.js
 * Class: `PeerSession`
 * Features:
-  - WebSocket signaling to `ws://localhost:8080`.
-  - Google public STUN (`stun:stun.l.google.com:19302`).
-  - Receiving-side ICE candidate queuing buffer (buffers candidates if arriving before `setRemoteDescription` completes).
-  - 15-second connection timeout guard with TURN server advisory alert.
+  - Dynamic signaling URL resolution: `getDefaultSignalingUrl()` resolves origin-relative `ws://` / `wss://.../ws`.
+  - Configured ICE servers via `getIceServers()` (Google STUN + TURN credentials via `import.meta.env`).
+  - Receiving-side ICE candidate queuing buffer (buffers candidates before `setRemoteDescription` completes).
+  - 15-second connection timeout guard ("Connection failed — please check your network or try again").
+  - `getConnectionType()`: Inspects `RTCPeerConnection.getStats()` active candidate pair (`direct` vs `relay`).
   - Automatic AES-256-GCM session key derivation on DataChannel open.
-  - Full encryption pipeline on `sendMessage(text)` and verification pipeline on `onmessage`.
+  - Full encryption pipeline on `sendMessage(text)` and streaming `sendFile(file)`.
 
 --------------------------------------------------------------------------------
 [G] USER INTERFACE COMPONENTS (client/src/components/)
@@ -174,10 +172,10 @@ Key Invariants:
   - Ephemeral chat box with live countdown badges (`⏳ 58s` / `🔥 Burn in 4s`).
   - Active 1-second interval garbage collection removing expired messages from React state.
   - "Burn on read (5s)" toggle for instant post-view self-destruction.
+  - Connection Quality Indicator Badge: "Direct connection" (⚡ host/srflx) vs "Relayed connection" (🖥️ TURN relay).
+  - Drag-and-drop file staging zone & 16KB encrypted streaming progress bars.
   - 30-second background blur auto-purge and tab close wipe.
-  - Peer Identity binding requirement step (validates peer identity before connection).
-  - Prominent 6-character room code generator & copy button.
-  - Live E2EE chat box displaying `🔒 AES-256-GCM + ECDSA` badge with peer fingerprint.
+  - Dynamic Signaling URL input with one-click reset to origin default.
 * `MyIdentity.jsx`: High-density `QRCodeSVG`, raw payload/fingerprint copy, SVG download, identity regeneration with confirmation modal.
 * `QRScanner.jsx`: Live webcam QR scanner via `html5-qrcode` with emerald viewfinder frame, file image fallback, and "Use in Connect Room" action.
 * `KeyDetails.jsx`: Raw JWK viewers and educational security notes on non-extractable keys.
@@ -220,7 +218,7 @@ Key Invariants:
 - [x] Milestone 4 (Pass 2): Built WebRTC Signaling & Direct P2P DataChannel:
       * Implemented `PeerSession` WebRTC manager connected to `ws://localhost:8080`.
       * Added receiving-side ICE candidate queuing buffer before `setRemoteDescription()`.
-      * Added 15-second connection timeout guard with TURN server advisory.
+      * Added 15-second connection timeout guard.
       * Built `ConnectRoom.jsx` UI with room code display, join input, and live chat box.
 - [x] Milestone 5 (Pass 3): Built End-to-End Cryptographic Encryption (E2EE):
       * ECDH 256-bit AES-GCM session key derivation.
@@ -245,12 +243,25 @@ Key Invariants:
       * Drag-and-drop zone overlay and file attachment staging modal in `ConnectRoom.jsx`.
       * Anti-persistence in-memory `Blob` URLs with auto-revocation (`URL.revokeObjectURL`) upon expiry or room disconnect.
       * Verified with clean production build (`npm run build`).
+- [x] Milestone 11 (Pass 6): Built TURN Server Integration & Cross-Network Traversal:
+      * Integrated TURN server configuration in `client/src/utils/webrtc.js` alongside public STUN servers.
+      * Secure credentials loaded via `import.meta.env` (`VITE_TURN_URL`, `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`).
+      * Created `client/.env.example` template for clean open-source configuration.
+      * Updated 15-second timeout and ICE connection failure guards to "Connection failed — please check your network or try again".
+      * Built active candidate pair type detection via `RTCPeerConnection.getStats()` in `PeerSession.getConnectionType()`.
+      * Added connection quality badge in `ConnectRoom.jsx` ("Direct connection" vs "Relayed connection").
+      * Cryptographic invariant maintained: TURN server acts strictly as an encrypted byte relay with zero plaintext access (E2EE holds 100%).
+- [x] Milestone 12 (Single-Tunnel ngrok Proxy & Host Whitelist):
+      * Configured WebSocket proxy in `client/vite.config.js` forwarding `/ws` to `http://localhost:8080` (`ws: true`).
+      * Added dynamic origin URL derivation (`getDefaultSignalingUrl()`) in `client/src/utils/webrtc.js`.
+      * Added `allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app']` in `client/vite.config.js`.
+      * Verified production build passing (`npm run build`).
 - [x] Maintained comprehensive live tracking in `status.txt`.
 
 ================================================================================
 7. UPCOMING ROADMAP & FUTURE MILESTONES
 ================================================================================
-1. Pass 6 — Production Hardening & Network Traversal:
-   - Integrated STUN / TURN server credential configuration.
-   - Audio/Video WebRTC peer stream toggle (optional).
+1. Pass 7 — Ephemeral Media & Polish:
+   - Optional encrypted P2P audio/video stream negotiation.
+   - Offline multi-device QR exchange enhancements.
 ================================================================================

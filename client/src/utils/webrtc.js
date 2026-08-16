@@ -22,12 +22,55 @@ import { encryptMessage, decryptMessage, signMessage, verifyMessage } from './en
 import { createEphemeralPayload, DEFAULT_TTL_SECONDS } from './ephemeral';
 import { sendFileStream, FileReceiver, BUFFER_LOW_THRESHOLD } from './fileTransfer';
 
-const DEFAULT_SIGNALING_URL = 'ws://localhost:8080';
-const RTC_CONFIG = {
-  iceServers: [
+/**
+ * Construct signaling WebSocket URL dynamically from current window location.
+ * Resolves to ws://localhost:5173/ws locally or wss://<ngrok-host>/ws when accessed remotely.
+ */
+export function getDefaultSignalingUrl() {
+  if (typeof window !== 'undefined' && window.location) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/ws`;
+  }
+  return 'ws://localhost:8080';
+}
+
+export const DEFAULT_SIGNALING_URL = getDefaultSignalingUrl();
+
+/**
+ * Build ICE servers configuration including STUN and optional TURN server credentials
+ */
+export function getIceServers() {
+  const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-  ],
+  ];
+
+  const turnUrl = import.meta.env.VITE_TURN_URL;
+  const turnUsername = import.meta.env.VITE_TURN_USERNAME;
+  const turnCredential = import.meta.env.VITE_TURN_CREDENTIAL;
+
+  if (turnUrl) {
+    const formattedUrl = turnUrl.startsWith('turn:') || turnUrl.startsWith('turns:')
+      ? turnUrl
+      : `turn:${turnUrl}`;
+
+    const turnServer = {
+      urls: formattedUrl,
+    };
+
+    if (turnUsername) turnServer.username = turnUsername;
+    if (turnCredential) turnServer.credential = turnCredential;
+
+    iceServers.push(turnServer);
+  }
+
+  return iceServers;
+}
+
+export const RTC_CONFIG = {
+  get iceServers() {
+    return getIceServers();
+  },
 };
 const CONNECTION_TIMEOUT_MS = 15000;
 
@@ -43,11 +86,11 @@ export class PeerSession {
    * @param {object} peerIdentity - Remote peer identity containing ecdsa and ecdh JWKs + fingerprint
    * @param {string} [signalingUrl]
    */
-  constructor(callbacks, myIdentity = null, peerIdentity = null, signalingUrl = DEFAULT_SIGNALING_URL) {
+  constructor(callbacks, myIdentity = null, peerIdentity = null, signalingUrl = null) {
     this.callbacks = callbacks;
     this.myIdentity = myIdentity;
     this.peerIdentity = peerIdentity;
-    this.signalingUrl = signalingUrl;
+    this.signalingUrl = signalingUrl || getDefaultSignalingUrl();
 
     this.ws = null;
     this.pc = null;
@@ -253,7 +296,7 @@ export class PeerSession {
       } else if (pc.connectionState === 'failed') {
         this.clearConnectionTimeout();
         this.callbacks.onStatusChange('error', {
-          message: 'Connection failed — you may need a TURN server for this network.',
+          message: 'Connection failed — please check your network or try again.',
         });
       } else if (pc.connectionState === 'disconnected') {
         this.callbacks.onStatusChange('disconnected', { message: 'Peer connection disconnected.' });
@@ -267,7 +310,7 @@ export class PeerSession {
       } else if (pc.iceConnectionState === 'failed') {
         this.clearConnectionTimeout();
         this.callbacks.onStatusChange('error', {
-          message: 'Connection failed — you may need a TURN server for this network.',
+          message: 'Connection failed — please check your network or try again.',
         });
       }
     };
@@ -650,7 +693,7 @@ export class PeerSession {
       ) {
         console.warn('[WebRTC] Connection timeout reached (15s)');
         this.callbacks.onStatusChange('error', {
-          message: 'Connection failed — you may need a TURN server for this network.',
+          message: 'Connection failed — please check your network or try again.',
         });
         this.cleanup(false);
       }
@@ -709,5 +752,64 @@ export class PeerSession {
     if (notify) {
       this.callbacks.onStatusChange('idle');
     }
+  }
+
+  /**
+   * Check RTCPeerConnection.getStats() for the active candidate pair type (host/srflx/prflx/relay).
+   * 
+   * SECURITY NOTE:
+   * Even in "Relayed" mode via TURN, the TURN server only sees encrypted ciphertext,
+   * never plaintext — the E2EE from Pass 3 still fully applies.
+   * 
+   * @returns {Promise<'direct'|'relay'|'unknown'>}
+   */
+  async getConnectionType() {
+    if (!this.pc) return 'unknown';
+    try {
+      const stats = await this.pc.getStats();
+      let activePair = null;
+      let selectedPairId = null;
+
+      // 1. Check transport stats for selected candidate pair ID
+      stats.forEach((report) => {
+        if (report.type === 'transport' && report.selectedCandidatePairId) {
+          selectedPairId = report.selectedCandidatePairId;
+        }
+      });
+
+      if (selectedPairId && stats.has(selectedPairId)) {
+        activePair = stats.get(selectedPairId);
+      }
+
+      // 2. Fallback: Search candidate pairs for nominated/selected/succeeded pairs
+      if (!activePair) {
+        stats.forEach((report) => {
+          if (
+            report.type === 'candidate-pair' &&
+            (report.selected || report.nominated || report.state === 'succeeded')
+          ) {
+            activePair = report;
+          }
+        });
+      }
+
+      if (activePair) {
+        const localCandidate = stats.get(activePair.localCandidateId);
+        const remoteCandidate = stats.get(activePair.remoteCandidateId);
+
+        const localType = localCandidate?.candidateType || localCandidate?.type;
+        const remoteType = remoteCandidate?.candidateType || remoteCandidate?.type;
+
+        if (localType === 'relay' || remoteType === 'relay') {
+          return 'relay';
+        }
+        if (localType || remoteType) {
+          return 'direct';
+        }
+      }
+    } catch (err) {
+      console.warn('[WebRTC] Failed to inspect connection stats:', err);
+    }
+    return 'unknown';
   }
 }

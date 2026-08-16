@@ -5,6 +5,15 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    host: true
-  }
+    host: true,
+    allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app'],
+    proxy: {
+      '/ws': {
+        target: 'http://localhost:8080',
+        ws: true,
+        rewrite: (path) => path.replace(/^\/ws/, ''),
+      },
+    },
+  },
 });
+
