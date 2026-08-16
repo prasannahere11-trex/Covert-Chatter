@@ -2,11 +2,11 @@
                       COVERT CHATTER (WHISPER DROP)
               COMPLETE PROJECT STATUS & FULL CHRONOLOGICAL RECORD
 ================================================================================
-Last Updated: 2026-08-16 08:37:45 IST
+Last Updated: 2026-08-16 12:51:00 IST
 Repository Location: e:\Covert Chat
 Git Branch: main
-Latest Git Commit: 556d1ae ("first commit")
-Overall System Health: 100% OPERATIONAL & VERIFIED (Passes 1, 2, 3, & 4 Complete)
+Latest Git Commit: 371644f (Pass 5 complete in working tree)
+Overall System Health: 100% OPERATIONAL & VERIFIED (Passes 1, 2, 3, 4, & 5 Complete)
 
 ================================================================================
 1. PROJECT PURPOSE, MISSION & CORE SECURITY MODEL
@@ -236,17 +236,21 @@ Key Invariants:
 - [x] Milestone 7: Verified production build (`npm run build` passing with 0 errors).
 - [x] Milestone 8: Started backend signaling server daemon on `ws://localhost:8080`.
 - [x] Milestone 9: Verified zero persistence in DevTools Console (localStorage, sessionStorage, IndexedDB).
+- [x] Milestone 10 (Pass 5): Built Encrypted Ephemeral File Sharing Subsystem:
+      * 16KB chunking streaming protocol over WebRTC DataChannel (`client/src/utils/fileTransfer.js`).
+      * Chunk-level AES-256-GCM encryption with fresh IVs + ECDSA digital signatures on every chunk.
+      * WebRTC SCTP Backpressure flow control via `bufferedAmountLowThreshold` (32KB) and `bufferedamountlow` event pausing on 64KB high watermark.
+      * Out-of-order chunk index reassembly and total chunk count integrity verification in `FileReceiver`.
+      * Configurable file expiry selector (`60s`, `3 min` default, `5 min`, `10 min`) + Burn-on-Read.
+      * Drag-and-drop zone overlay and file attachment staging modal in `ConnectRoom.jsx`.
+      * Anti-persistence in-memory `Blob` URLs with auto-revocation (`URL.revokeObjectURL`) upon expiry or room disconnect.
+      * Verified with clean production build (`npm run build`).
 - [x] Maintained comprehensive live tracking in `status.txt`.
 
 ================================================================================
 7. UPCOMING ROADMAP & FUTURE MILESTONES
 ================================================================================
-1. Pass 5 — Encrypted File & Media Drops:
-   - Chunked encrypted binary streaming over RTCDataChannel.
-   - Drag-and-drop secure file sharing with live transfer progress.
-   - Ephemeral file buffer with automatic wipe on download or expiry.
-
-2. Pass 6 — Production Hardening & Network Traversal:
+1. Pass 6 — Production Hardening & Network Traversal:
    - Integrated STUN / TURN server credential configuration.
    - Audio/Video WebRTC peer stream toggle (optional).
 ================================================================================

@@ -23,24 +23,37 @@ import {
   Clock,
   Trash2,
   ShieldAlert,
-  Info
+  Info,
+  Paperclip,
+  File,
+  Download,
+  UploadCloud,
+  X,
+  FileText,
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { PeerSession } from '../utils/webrtc';
 import { validatePeerIdentityPayload } from '../utils/crypto';
 import { 
   DEFAULT_TTL_SECONDS, 
+  DEFAULT_FILE_TTL_SECONDS,
+  FILE_TTL_OPTIONS,
   BURN_ON_READ_DELAY_SECONDS, 
   BACKGROUND_BLUR_PURGE_TIMEOUT_MS,
   getRemainingSeconds, 
-  isMessageExpired 
+  isMessageExpired,
+  revokeFileBlobUrl 
 } from '../utils/ephemeral';
+import { formatFileSize, MAX_FILE_SIZE } from '../utils/fileTransfer';
 
 /**
  * 🔒 ZERO PERSISTENCE SECURITY INVARIANT:
  * ---------------------------------------
- * All chat messages are stored solely in the `messages` transient React state (volatile RAM).
+ * All chat messages and streaming file buffers are stored solely in transient React RAM.
  * They are NEVER written to localStorage, sessionStorage, IndexedDB, or server logs.
- * Leaving the room, closing the tab, or switching away for > 30 seconds triggers an immediate memory wipe.
+ * Leaving the room, closing the tab, or switching away for > 30 seconds triggers an immediate memory wipe
+ * and revokes all in-memory Blob URLs (`URL.revokeObjectURL`).
  */
 
 export default function ConnectRoom({ 
@@ -64,9 +77,19 @@ export default function ConnectRoom({
   const [showManualPeerInput, setShowManualPeerInput] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
+  // Pass 5 File Sharing States
+  const [attachedFile, setAttachedFile] = useState(null);
+  const [fileTtlSeconds, setFileTtlSeconds] = useState(DEFAULT_FILE_TTL_SECONDS); // 180s (3m) default
+  const [fileBurnOnRead, setFileBurnOnRead] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isSendingFile, setIsSendingFile] = useState(false);
+
   const sessionRef = useRef(null);
   const messagesEndRef = useRef(null);
   const blurTimerRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   // Auto-scroll chat to bottom
   const scrollToBottom = () => {
@@ -77,17 +100,18 @@ export default function ConnectRoom({
     scrollToBottom();
   }, [messages]);
 
-  // 1-Second Ticking & Ephemeral Message Garbage Collection Loop
+  // 1-Second Ticking & Ephemeral Garbage Collection Loop (Messages + Files)
   useEffect(() => {
     const timer = setInterval(() => {
       const now = Date.now();
       setCurrentTime(now);
 
-      // Purge expired messages from volatile memory
+      // Purge expired messages from volatile memory and revoke Blob URLs
       setMessages((prev) => {
-        const remaining = prev.filter((msg) => !isMessageExpired(msg, now));
-        if (remaining.length !== prev.length) {
-          return remaining;
+        const expired = prev.filter((msg) => isMessageExpired(msg, now));
+        if (expired.length > 0) {
+          expired.forEach(revokeFileBlobUrl);
+          return prev.filter((msg) => !isMessageExpired(msg, now));
         }
         return prev;
       });
@@ -96,7 +120,7 @@ export default function ConnectRoom({
     return () => clearInterval(timer);
   }, []);
 
-  // Burn-on-Read: Activate countdown when recipient first renders the message
+  // Burn-on-Read: Activate countdown when recipient first renders the message or file
   useEffect(() => {
     setMessages((prev) => {
       let updated = false;
@@ -104,12 +128,15 @@ export default function ConnectRoom({
 
       const next = prev.map((msg) => {
         if (msg.sender === 'peer' && msg.burnOnRead && !msg.burnDeadline) {
-          updated = true;
-          return {
-            ...msg,
-            renderedAt: now,
-            burnDeadline: now + (msg.burnDelay || BURN_ON_READ_DELAY_SECONDS) * 1000,
-          };
+          // For completed files or regular text messages
+          if (!msg.type || msg.type === 'text' || (msg.type === 'file' && msg.status === 'completed')) {
+            updated = true;
+            return {
+              ...msg,
+              renderedAt: now,
+              burnDeadline: now + (msg.burnDelay || BURN_ON_READ_DELAY_SECONDS) * 1000,
+            };
+          }
         }
         return msg;
       });
@@ -127,7 +154,9 @@ export default function ConnectRoom({
           if (sessionRef.current) {
             sessionRef.current.cleanup(true);
           }
+          messagesRef.current.forEach(revokeFileBlobUrl);
           setMessages([]);
+          setAttachedFile(null);
           setStatus('disconnected');
           setStatusDetails({
             message: 'Session wiped: Tab remained in background for over 30 seconds.',
@@ -146,6 +175,7 @@ export default function ConnectRoom({
       if (sessionRef.current) {
         sessionRef.current.cleanup(false);
       }
+      messagesRef.current.forEach(revokeFileBlobUrl);
       setMessages([]);
     };
 
@@ -161,6 +191,7 @@ export default function ConnectRoom({
       if (sessionRef.current) {
         sessionRef.current.cleanup();
       }
+      messagesRef.current.forEach(revokeFileBlobUrl);
     };
   }, []);
 
@@ -183,6 +214,19 @@ export default function ConnectRoom({
     }
   };
 
+  const handleIncomingMessageOrFile = (messageData) => {
+    setMessages((prev) => {
+      const existingIndex = prev.findIndex((m) => m.id === messageData.id);
+      if (existingIndex >= 0) {
+        const next = [...prev];
+        next[existingIndex] = { ...next[existingIndex], ...messageData };
+        return next;
+      } else {
+        return [...prev, messageData];
+      }
+    });
+  };
+
   const initSession = () => {
     if (!verifiedPeer) {
       onShowToast('Please scan or paste peer identity before connecting', 'warning');
@@ -202,10 +246,14 @@ export default function ConnectRoom({
           if (newStatus === 'connected') {
             onShowToast('🔒 Direct E2EE WebRTC DataChannel established!', 'success');
           } else if (newStatus === 'disconnected') {
+            messagesRef.current.forEach(revokeFileBlobUrl);
             setMessages([]); // Instant volatile memory purge on disconnect
+            setAttachedFile(null);
             onShowToast(details?.message || 'Peer disconnected — memory purged', 'warning');
           } else if (newStatus === 'error') {
+            messagesRef.current.forEach(revokeFileBlobUrl);
             setMessages([]);
+            setAttachedFile(null);
             onShowToast(details?.message || 'Connection error', 'error');
           }
         },
@@ -216,13 +264,10 @@ export default function ConnectRoom({
           setRoomCode(code);
         },
         onMessageReceived: (messageData) => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              ...messageData,
-              sender: 'peer',
-            },
-          ]);
+          handleIncomingMessageOrFile(messageData);
+        },
+        onFileProgress: (fileProgressData) => {
+          handleIncomingMessageOrFile(fileProgressData);
         },
       },
       myIdentity,
@@ -235,6 +280,7 @@ export default function ConnectRoom({
   };
 
   const handleCreateRoom = async () => {
+    messagesRef.current.forEach(revokeFileBlobUrl);
     setMessages([]);
     setRoomCode('');
     const session = initSession();
@@ -251,6 +297,7 @@ export default function ConnectRoom({
       return;
     }
 
+    messagesRef.current.forEach(revokeFileBlobUrl);
     setMessages([]);
     const session = initSession();
     if (session) {
@@ -288,6 +335,85 @@ export default function ConnectRoom({
     }
   };
 
+  const handleSelectFile = (file) => {
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      onShowToast(`File size (${formatFileSize(file.size)}) exceeds the 25MB limit.`, 'error');
+      return;
+    }
+    setAttachedFile(file);
+    setFileTtlSeconds(DEFAULT_FILE_TTL_SECONDS); // 3 minutes default
+  };
+
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleSelectFile(file);
+    }
+    // Reset file input so same file can be selected again if cancelled
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSendAttachedFile = async () => {
+    if (!attachedFile || !sessionRef.current || isSendingFile) return;
+
+    const file = attachedFile;
+    setIsSendingFile(true);
+
+    try {
+      await sessionRef.current.sendFile(
+        file,
+        {
+          ttlSeconds: fileTtlSeconds,
+          burnOnRead: fileBurnOnRead,
+        },
+        (progressData) => {
+          handleIncomingMessageOrFile(progressData);
+        }
+      );
+
+      setAttachedFile(null);
+      setFileBurnOnRead(false);
+      onShowToast(`Encrypted file "${file.name}" sent successfully!`, 'success');
+    } catch (err) {
+      console.error('[FileTransfer] Send error:', err);
+      onShowToast(err.message || 'Failed to send file', 'error');
+    } finally {
+      setIsSendingFile(false);
+    }
+  };
+
+  // Drag-and-Drop Handlers
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (status === 'connected' && !isDraggingOver) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+
+    if (status !== 'connected') return;
+
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      handleSelectFile(files[0]);
+    }
+  };
+
   const handleDisconnect = () => {
     if (sessionRef.current) {
       sessionRef.current.cleanup(true);
@@ -295,7 +421,9 @@ export default function ConnectRoom({
     setStatus('idle');
     setStatusDetails(null);
     setRoomCode('');
+    messagesRef.current.forEach(revokeFileBlobUrl);
     setMessages([]); // Instant volatile memory purge
+    setAttachedFile(null);
     onShowToast('Disconnected from room — all messages wiped', 'info');
   };
 
@@ -310,10 +438,10 @@ export default function ConnectRoom({
                 <Flame className="w-5 h-5 text-amber-400 animate-pulse" />
                 Ephemeral End-to-End Encrypted Tunnel
               </h2>
-              <span className="badge-emerald text-[11px]">Pass 4: Self-Destruct Active</span>
+              <span className="badge-emerald text-[11px]">Pass 5: E2EE File Drops Active</span>
             </div>
             <p className="text-xs text-slate-400">
-              Zero disk persistence. Messages are signed, encrypted with AES-256-GCM, and automatically wiped from RAM upon expiry.
+              Zero disk persistence. Text & files are chunked (16KB), encrypted with AES-256-GCM, signed via ECDSA, and automatically wiped from RAM upon expiry.
             </p>
           </div>
 
@@ -585,8 +713,37 @@ export default function ConnectRoom({
           </div>
         </div>
       ) : status === 'connected' ? (
-        /* Connected State: Live Ephemeral E2EE Chat Box */
-        <div className="glass-panel rounded-2xl overflow-hidden border-emerald-500/30 flex flex-col h-[600px] animate-scale-up shadow-2xl">
+        /* Connected State: Live Ephemeral E2EE Chat Box with File Dropzone */
+        <div 
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`glass-panel rounded-2xl overflow-hidden border-emerald-500/30 flex flex-col h-[650px] animate-scale-up shadow-2xl relative transition-all ${
+            isDraggingOver ? 'ring-2 ring-cyan-400 bg-cyan-950/20' : ''
+          }`}
+        >
+          {/* Hidden File Input Picker */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileInputChange}
+            className="hidden"
+          />
+
+          {/* Drag & Drop Visual Overlay */}
+          {isDraggingOver && (
+            <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-sm border-2 border-dashed border-cyan-400 rounded-2xl flex flex-col items-center justify-center p-6 space-y-4 animate-scale-up pointer-events-none">
+              <div className="p-4 rounded-2xl bg-cyan-500/20 text-cyan-300 animate-bounce">
+                <UploadCloud className="w-12 h-12" />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-lg font-bold text-white">Drop File to Encrypt & Send</h3>
+                <p className="text-xs text-cyan-300">Files are chunked in 16KB blocks and encrypted with AES-256-GCM (Max 25MB)</p>
+              </div>
+            </div>
+          )}
+
           {/* Chat Header with E2EE Badge and Peer Fingerprint */}
           <div className="p-4 bg-slate-900/90 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -620,36 +777,43 @@ export default function ConnectRoom({
           </div>
 
           {/* Ephemeral Memory Notice Banner */}
-          <div className="bg-slate-900/95 border-b border-slate-800/80 px-4 py-2 flex items-center gap-2 text-[11px] text-slate-400">
-            <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="leading-snug">
-              Messages exist only in this tab's memory. Closing this tab destroys them permanently — there is no way to recover them.
-            </span>
+          <div className="bg-slate-900/95 border-b border-slate-800/80 px-4 py-2 flex items-center justify-between gap-2 text-[11px] text-slate-400">
+            <div className="flex items-center gap-2">
+              <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="leading-snug">
+                Volatile RAM only. Leaving room, tab close, or 30s background blur permanently wipes all messages & files.
+              </span>
+            </div>
+            <span className="text-slate-500 font-mono text-[10px] hidden sm:inline">Max File: 25MB</span>
           </div>
 
           {/* Chat Message Stream */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-slate-950/40">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-950/40">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-2">
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                  <Flame className="w-6 h-6" />
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-3">
+                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  <Flame className="w-8 h-8" />
                 </div>
-                <p className="text-sm font-semibold text-slate-300">Ephemeral Chat Active</p>
-                <p className="text-xs max-w-sm text-slate-400">
-                  Messages automatically expire and self-destruct from memory after 60s (or 5s with Burn on Read).
-                </p>
+                <div>
+                  <p className="text-sm font-semibold text-slate-200">Ephemeral Channel Active</p>
+                  <p className="text-xs max-w-sm text-slate-400 mt-1">
+                    Send encrypted text messages or drop files (up to 25MB). Chunks stream directly peer-to-peer with zero server storage.
+                  </p>
+                </div>
               </div>
             ) : (
               messages.map((msg) => {
                 const isMe = msg.sender === 'me';
                 const remainingSecs = getRemainingSeconds(msg, currentTime);
                 const isBurn = msg.burnOnRead;
+                const isFile = msg.type === 'file';
 
                 return (
                   <div
                     key={msg.id}
                     className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 animate-fade-in transition-opacity duration-300 ${remainingSecs <= 2 ? 'opacity-40 animate-pulse' : 'opacity-100'}`}
                   >
+                    {/* Message Header Badges */}
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 px-1">
                       <span className="font-semibold text-slate-300">{isMe ? 'You' : 'Peer'}</span>
                       <span>•</span>
@@ -671,17 +835,91 @@ export default function ConnectRoom({
                       )}
                     </div>
 
-                    <div
-                      className={`max-w-md px-4 py-2.5 rounded-2xl text-sm leading-relaxed relative group ${
-                        isMe
-                          ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-br-none shadow-md shadow-emerald-950/50'
-                          : isBurn
-                          ? 'bg-slate-900 text-slate-100 border border-amber-500/40 rounded-bl-none shadow-lg shadow-amber-950/20'
-                          : 'bg-slate-800/90 text-slate-100 border border-slate-700/80 rounded-bl-none shadow'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                    </div>
+                    {/* Content Rendering: File Card vs Text Bubble */}
+                    {isFile ? (
+                      /* Pass 5: Encrypted Ephemeral File Card */
+                      <div
+                        className={`w-full max-w-sm p-4 rounded-2xl border transition-all ${
+                          isMe
+                            ? 'bg-slate-900/90 border-emerald-500/40 rounded-br-none shadow-lg shadow-emerald-950/20'
+                            : isBurn
+                            ? 'bg-slate-900/90 border-amber-500/40 rounded-bl-none shadow-lg shadow-amber-950/20'
+                            : 'bg-slate-900/90 border-slate-700/80 rounded-bl-none shadow-lg'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2.5 rounded-xl border shrink-0 ${
+                            msg.status === 'completed'
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                              : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 animate-pulse'
+                          }`}>
+                            {msg.status === 'completed' ? (
+                              <FileText className="w-6 h-6" />
+                            ) : (
+                              <Loader2 className="w-6 h-6 animate-spin" />
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-bold text-white truncate" title={msg.fileName}>
+                              {msg.fileName}
+                            </h4>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                              <span>{formatFileSize(msg.fileSize)}</span>
+                              <span>•</span>
+                              <span className="font-mono text-cyan-300">
+                                {msg.status === 'completed' ? 'E2EE Verified' : `${msg.progress || 0}%`}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Streaming Progress Bar */}
+                        {msg.status !== 'completed' ? (
+                          <div className="mt-3 space-y-1.5">
+                            <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                              <div
+                                className="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full transition-all duration-200 rounded-full"
+                                style={{ width: `${Math.max(5, msg.progress || 0)}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] text-slate-400">
+                              <span>{isMe ? 'Encrypting & Streaming...' : 'Receiving & Decrypting...'}</span>
+                              <span className="font-mono font-bold text-emerald-400">{msg.progress || 0}%</span>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Completed Download Action */
+                          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                            {msg.blobUrl ? (
+                              <a
+                                href={msg.blobUrl}
+                                download={msg.fileName}
+                                className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 w-full justify-center"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>Download File ({formatFileSize(msg.fileSize)})</span>
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-amber-400 italic">File buffer wiped</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Standard Text Message Bubble */
+                      <div
+                        className={`max-w-md px-4 py-2.5 rounded-2xl text-sm leading-relaxed relative group ${
+                          isMe
+                            ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-br-none shadow-md shadow-emerald-950/50'
+                            : isBurn
+                            ? 'bg-slate-900 text-slate-100 border border-amber-500/40 rounded-bl-none shadow-lg shadow-amber-950/20'
+                            : 'bg-slate-800/90 text-slate-100 border border-slate-700/80 rounded-bl-none shadow'
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -689,9 +927,102 @@ export default function ConnectRoom({
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Pass 5: Attached File Staging Modal / Bar */}
+          {attachedFile && (
+            <div className="bg-slate-900 border-t border-cyan-500/30 p-3.5 space-y-3 animate-slide-up">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                    <File className="w-4 h-4" />
+                  </div>
+                  <div className="truncate">
+                    <div className="text-xs font-bold text-white truncate">{attachedFile.name}</div>
+                    <div className="text-[11px] text-slate-400 font-mono">{formatFileSize(attachedFile.size)}</div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setAttachedFile(null)}
+                  disabled={isSendingFile}
+                  className="p-1 rounded-lg text-slate-400 hover:text-rose-400 transition-colors"
+                  title="Remove attached file"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Expiry Selector Bar & Burn on Read for Files */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-semibold text-slate-400">File Lifespan:</span>
+                  <div className="flex rounded-lg bg-slate-950 p-0.5 border border-slate-800">
+                    {FILE_TTL_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.seconds}
+                        type="button"
+                        onClick={() => setFileTtlSeconds(opt.seconds)}
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all ${
+                          fileTtlSeconds === opt.seconds
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setFileBurnOnRead(!fileBurnOnRead)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all ${
+                    fileBurnOnRead
+                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Self-destruct 5 seconds after recipient renders/downloads"
+                >
+                  <Flame className={`w-3 h-3 ${fileBurnOnRead ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
+                  <span>Burn on Read (5s)</span>
+                </button>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setAttachedFile(null)}
+                  disabled={isSendingFile}
+                  className="btn-secondary text-xs py-1.5 px-3"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendAttachedFile}
+                  disabled={isSendingFile}
+                  className="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isSendingFile ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Streaming Chunks...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      <span>Send Encrypted File</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Chat Controls & Input Bar */}
           <div className="bg-slate-900/90 border-t border-slate-800 p-3 space-y-2">
-            {/* Ephemeral Toggles Bar */}
+            {/* Ephemeral Toggles Bar for Text */}
             <div className="flex items-center justify-between px-1 text-xs">
               <button
                 type="button"
@@ -701,28 +1032,46 @@ export default function ConnectRoom({
                     ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-sm shadow-amber-950/50'
                     : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
-                title="Burn message 5 seconds after recipient renders it"
+                title="Burn text message 5 seconds after recipient renders it"
               >
                 <Flame className={`w-3.5 h-3.5 ${burnOnReadEnabled ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
                 <span>Burn on read (5s)</span>
                 {burnOnReadEnabled && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block ml-0.5" />}
               </button>
 
-              <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
-                <Clock className="w-3 h-3 text-cyan-400" />
-                <span>Default TTL: 60s</span>
+              <div className="text-[11px] text-slate-400 font-mono flex items-center gap-2">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-cyan-400" />
+                  <span>Text TTL: 60s</span>
+                </span>
+                <span>•</span>
+                <span className="text-emerald-400">16KB Chunking E2EE</span>
               </div>
             </div>
 
-            {/* Message Input Field */}
-            <form onSubmit={handleSendMessage} className="flex gap-2">
+            {/* Message Input Field with File Attachment Button */}
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 transition-colors"
+                title="Attach encrypted file (Max 25MB)"
+              >
+                <Paperclip className="w-4 h-4" />
+              </button>
+
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={burnOnReadEnabled ? "Type a burn-on-read message (5s timer)..." : "Type an encrypted ephemeral message..."}
+                placeholder={
+                  burnOnReadEnabled 
+                    ? "Type a burn-on-read message (5s timer)..." 
+                    : "Type an encrypted ephemeral message..."
+                }
                 className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
               />
+
               <button
                 type="submit"
                 disabled={!inputText.trim()}
@@ -750,7 +1099,7 @@ export default function ConnectRoom({
             </h3>
             <p className="text-sm text-slate-300 leading-relaxed max-w-sm mx-auto">
               {statusDetails?.message ||
-                'The session was closed. All ephemeral message history, room codes, and AES session keys have been permanently wiped from volatile RAM.'}
+                'The session was closed. All ephemeral message history, streaming files, room codes, and AES session keys have been permanently wiped from volatile RAM.'}
             </p>
           </div>
 

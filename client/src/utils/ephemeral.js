@@ -22,8 +22,31 @@
  */
 
 export const DEFAULT_TTL_SECONDS = 60;
+export const DEFAULT_FILE_TTL_SECONDS = 180; // 3 minutes default for files
 export const BURN_ON_READ_DELAY_SECONDS = 5;
 export const BACKGROUND_BLUR_PURGE_TIMEOUT_MS = 30000; // 30 seconds of tab blur triggers memory purge
+
+export const FILE_TTL_OPTIONS = [
+  { label: '60s', seconds: 60 },
+  { label: '3 min', seconds: 180 },
+  { label: '5 min', seconds: 300 },
+  { label: '10 min', seconds: 600 },
+];
+
+/**
+ * Safely revoke a Blob URL if present in an ephemeral message record.
+ * 
+ * @param {object} message
+ */
+export function revokeFileBlobUrl(message) {
+  if (message?.blobUrl) {
+    try {
+      URL.revokeObjectURL(message.blobUrl);
+    } catch (err) {
+      console.warn('[Ephemeral] Error revoking blob URL:', err);
+    }
+  }
+}
 
 /**
  * Construct an authenticated ephemeral message payload.

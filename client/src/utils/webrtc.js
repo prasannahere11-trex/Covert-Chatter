@@ -20,6 +20,7 @@
 import { deriveSharedSecret } from './crypto';
 import { encryptMessage, decryptMessage, signMessage, verifyMessage } from './encryption';
 import { createEphemeralPayload, DEFAULT_TTL_SECONDS } from './ephemeral';
+import { sendFileStream, FileReceiver, BUFFER_LOW_THRESHOLD } from './fileTransfer';
 
 const DEFAULT_SIGNALING_URL = 'ws://localhost:8080';
 const RTC_CONFIG = {
@@ -35,6 +36,7 @@ export class PeerSession {
    * @param {object} callbacks
    * @param {function(string, object=):void} callbacks.onStatusChange - ('idle'|'waiting'|'connecting'|'connected'|'disconnected'|'error', details)
    * @param {function(object):void} callbacks.onMessageReceived - (messageData)
+   * @param {function(object):void} [callbacks.onFileProgress] - (fileProgressData)
    * @param {function(string):void} callbacks.onRoomCreated - (roomCode)
    * @param {function(string):void} callbacks.onRoomJoined - (roomCode)
    * @param {object} myIdentity - Local cryptographic identity containing signingKeyPair and agreementKeyPair
@@ -54,6 +56,7 @@ export class PeerSession {
     this.isHost = false;
     this.sessionKey = null;
     this.connectionTimeout = null;
+    this.fileReceiver = null;
 
     // ICE Candidate buffering: Holds candidates received before setRemoteDescription() finishes
     this.isRemoteDescriptionSet = false;
@@ -72,6 +75,10 @@ export class PeerSession {
           this.peerIdentity.ecdh
         );
         console.log('[E2EE] Derived shared AES-256-GCM session key successfully.');
+
+        if (this.fileReceiver) {
+          this.fileReceiver.updateKeys(this.sessionKey, this.peerIdentity.ecdsa);
+        }
       } catch (err) {
         console.error('[E2EE] Failed to derive shared secret:', err);
       }
@@ -378,6 +385,30 @@ export class PeerSession {
   async setupDataChannel(dc) {
     this.dataChannel = dc;
 
+    // Configure low threshold for backpressure flow control
+    dc.bufferedAmountLowThreshold = BUFFER_LOW_THRESHOLD;
+
+    // Initialize FileReceiver for encrypted streaming files
+    if (this.peerIdentity?.ecdsa) {
+      this.fileReceiver = new FileReceiver({
+        sessionKey: this.sessionKey,
+        peerEcdsaPublicKeyJWK: this.peerIdentity.ecdsa,
+        onFileProgress: (fileData) => {
+          if (this.callbacks.onFileProgress) {
+            this.callbacks.onFileProgress(fileData);
+          } else {
+            this.callbacks.onMessageReceived(fileData);
+          }
+        },
+        onFileComplete: (fileData) => {
+          this.callbacks.onMessageReceived(fileData);
+        },
+        onError: (fileId, errMsg) => {
+          console.error('[WebRTC] File receive error:', fileId, errMsg);
+        },
+      });
+    }
+
     dc.onopen = async () => {
       console.log('[WebRTC] DataChannel "chat" is OPEN!');
       this.clearConnectionTimeout();
@@ -390,6 +421,10 @@ export class PeerSession {
             this.peerIdentity.ecdh
           );
           console.log('[E2EE] AES-256-GCM session key active.');
+
+          if (this.fileReceiver) {
+            this.fileReceiver.updateKeys(this.sessionKey, this.peerIdentity.ecdsa);
+          }
         } catch (err) {
           console.error('[E2EE] Session key derivation failed:', err);
         }
@@ -412,10 +447,24 @@ export class PeerSession {
       console.error('[WebRTC] DataChannel error:', err);
     };
 
-    // Process incoming encrypted ephemeral messages
+    // Process incoming encrypted ephemeral messages and file streams
     dc.onmessage = async (event) => {
       try {
         const payload = JSON.parse(event.data);
+
+        // 📁 Pass 5: File Transfer Protocol Messages
+        if (payload.type === 'file-start') {
+          await this.fileReceiver?.handleFileStart(payload);
+          return;
+        }
+        if (payload.type === 'file-chunk') {
+          await this.fileReceiver?.handleFileChunk(payload);
+          return;
+        }
+        if (payload.type === 'file-end') {
+          await this.fileReceiver?.handleFileEnd(payload);
+          return;
+        }
 
         // Check if message is encrypted format { id, iv, ciphertext, signature, timestamp }
         if (payload.ciphertext && payload.iv && payload.signature) {
@@ -553,6 +602,32 @@ export class PeerSession {
   }
 
   /**
+   * Encrypt, sign, chunk, and stream an ephemeral file over the direct RTCDataChannel
+   * 
+   * @param {File} file - Browser File object
+   * @param {object} [options] - Ephemeral options (ttlSeconds, burnOnRead)
+   * @param {function(object):void} [onProgress] - Progress callback
+   * @returns {Promise<object>}
+   */
+  async sendFile(file, options = {}, onProgress = () => {}) {
+    if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
+      throw new Error('DataChannel is not open. Cannot send file.');
+    }
+    if (!this.sessionKey || !this.myIdentity?.signingKeyPair?.privateKey) {
+      throw new Error('E2EE Session Key & signing identity required to send files.');
+    }
+
+    return await sendFileStream({
+      file,
+      dataChannel: this.dataChannel,
+      sessionKey: this.sessionKey,
+      mySigningPrivateKey: this.myIdentity.signingKeyPair.privateKey,
+      options,
+      onProgress,
+    });
+  }
+
+  /**
    * Send raw JSON message over WebSocket signaling connection
    */
   sendSignaling(obj) {
@@ -616,6 +691,13 @@ export class PeerSession {
         }
       } catch {}
       this.ws = null;
+    }
+
+    if (this.fileReceiver) {
+      try {
+        this.fileReceiver.cleanup();
+      } catch {}
+      this.fileReceiver = null;
     }
 
     this.roomCode = null;
