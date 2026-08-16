@@ -5,8 +5,6 @@ import {
   Shield, 
   Copy, 
   Check, 
-  FileCode, 
-  Info, 
   Layers,
   Cpu
 } from 'lucide-react';
@@ -16,7 +14,7 @@ export default function KeyDetails({ identity, onShowToast }) {
 
   if (!identity || !identity.publicJWKs) {
     return (
-      <div className="glass-panel p-8 text-center text-slate-400">
+      <div className="glass-panel p-8 text-center text-slate-400 bg-white">
         <p>No identity keys loaded.</p>
       </div>
     );
@@ -39,53 +37,53 @@ export default function KeyDetails({ identity, onShowToast }) {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Security Architecture Explainer Banner */}
-      <div className="glass-panel p-6 sm:p-8 rounded-2xl border-cyan-500/30 relative overflow-hidden">
+      <div className="glass-panel p-6 sm:p-8 bg-white border-slate-200">
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 shrink-0">
-            <Lock className="w-6 h-6" />
+          <div className="p-2.5 bg-sage-50 border border-sage-200 rounded-xl text-sage-600 shrink-0">
+            <Lock className="w-5 h-5" />
           </div>
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-bold text-white">
-                What Does "Non-Extractable" Mean for Security?
+              <h2 className="text-base font-bold text-slate-900">
+                What Does "Non-Extractable" Mean?
               </h2>
-              <span className="badge-emerald text-[11px]">Hardware & Sandboxed Keystore</span>
+              <span className="badge-sage text-[11px]">Hardware & Sandboxed Keystore</span>
             </div>
-            <p className="text-sm text-slate-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
               When Covert Chatter generates your cryptographic keypairs, the private keys are created with{' '}
-              <code className="font-mono text-emerald-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 text-xs">
+              <code className="font-mono text-sage-700 bg-slate-100 px-1 py-0.5 rounded text-xs">
                 extractable: false
               </code>
               . This instructs the browser's Web Crypto engine to lock the private key bytes inside a secure, sandboxed isolation boundary.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-xs text-slate-300">
-              <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-1">
-                <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>XSS Theft Protection</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
+                  <Shield className="w-3.5 h-3.5 text-sage-600" />
+                  <span>XSS Protection</span>
                 </div>
-                <p className="text-slate-400">
-                  Even if malicious code or a rogue browser extension runs on the page, it cannot call <code className="font-mono text-[10px]">exportKey()</code> to steal your private key bytes.
+                <p className="text-slate-500">
+                  Rogue browser scripts cannot call <code className="font-mono text-[10px]">exportKey()</code> to steal your private key bytes.
                 </p>
               </div>
 
-              <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-1">
-                <div className="flex items-center gap-1.5 text-cyan-400 font-semibold">
-                  <Cpu className="w-3.5 h-3.5" />
-                  <span>SubtleCrypto Black Box</span>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
+                  <Cpu className="w-3.5 h-3.5 text-sage-600" />
+                  <span>SubtleCrypto Isolation</span>
                 </div>
-                <p className="text-slate-400">
-                  Signing and key derivations happen entirely inside the browser's secure cryptographic module. Only the output signature or derived key is returned.
+                <p className="text-slate-500">
+                  Signatures and derivations execute inside the browser's native cryptographic module.
                 </p>
               </div>
 
-              <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-1">
-                <div className="flex items-center gap-1.5 text-amber-400 font-semibold">
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Isolated Persistence</span>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
+                  <Layers className="w-3.5 h-3.5 text-sage-600" />
+                  <span>Structured Persistence</span>
                 </div>
-                <p className="text-slate-400">
-                  Keys are safely cloned into IndexedDB as opaque <code className="font-mono text-[10px]">CryptoKey</code> handles without ever exposing raw private key material to disk plaintext.
+                <p className="text-slate-500">
+                  Keys are cloned into IndexedDB as opaque <code className="font-mono text-[10px]">CryptoKey</code> handles without exposing plaintext.
                 </p>
               </div>
             </div>
@@ -94,17 +92,17 @@ export default function KeyDetails({ identity, onShowToast }) {
       </div>
 
       {/* Raw JWK Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* ECDSA Signing JWK */}
-        <div className="glass-panel p-6 rounded-2xl space-y-4">
+        <div className="glass-panel p-5 bg-white space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-slate-100 rounded-lg text-slate-700">
                 <Key className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">ECDSA P-256 Public JWK</h3>
-                <span className="text-[11px] text-slate-400">Digital Signature & Identity Proof</span>
+                <h3 className="text-xs font-bold text-slate-900">ECDSA P-256 Public JWK</h3>
+                <span className="text-[11px] text-slate-400">Digital Signature Key</span>
               </div>
             </div>
             <button
@@ -112,48 +110,29 @@ export default function KeyDetails({ identity, onShowToast }) {
               className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1"
             >
               {copiedKey === 'ecdsa' ? (
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <Check className="w-3 h-3 text-sage-600" />
               ) : (
-                <Copy className="w-3.5 h-3.5" />
+                <Copy className="w-3 h-3" />
               )}
               <span>Copy</span>
             </button>
           </div>
 
-          <div className="space-y-1 text-xs">
-            <div className="flex justify-between text-slate-400 py-0.5 border-b border-slate-800/60">
-              <span>Key Type (`kty`):</span>
-              <span className="font-mono text-emerald-400">EC (Elliptic Curve)</span>
-            </div>
-            <div className="flex justify-between text-slate-400 py-0.5 border-b border-slate-800/60">
-              <span>Named Curve (`crv`):</span>
-              <span className="font-mono text-emerald-400">P-256 (secp256r1)</span>
-            </div>
-            <div className="flex justify-between text-slate-400 py-0.5 border-b border-slate-800/60">
-              <span>Permitted Operations:</span>
-              <span className="font-mono text-emerald-400">["verify"]</span>
-            </div>
-            <div className="flex justify-between text-slate-400 py-0.5">
-              <span>Private Key Exportability:</span>
-              <span className="font-mono text-rose-400">Disabled (Non-Extractable)</span>
-            </div>
-          </div>
-
-          <pre className="p-4 bg-slate-950/90 border border-slate-800/90 rounded-xl text-xs font-mono text-emerald-300/90 overflow-x-auto select-all leading-relaxed shadow-inner">
+          <pre className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-mono text-slate-800 overflow-x-auto select-all leading-relaxed">
             {ecdsaFormatted}
           </pre>
         </div>
 
         {/* ECDH Key Agreement JWK */}
-        <div className="glass-panel p-6 rounded-2xl space-y-4">
+        <div className="glass-panel p-5 bg-white space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-cyan-400">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-slate-100 rounded-lg text-slate-700">
                 <Key className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">ECDH P-256 Public JWK</h3>
-                <span className="text-[11px] text-slate-400">Ephemeral Diffie-Hellman Key Agreement</span>
+                <h3 className="text-xs font-bold text-slate-900">ECDH P-256 Public JWK</h3>
+                <span className="text-[11px] text-slate-400">Diffie-Hellman Key Agreement</span>
               </div>
             </div>
             <button
@@ -161,34 +140,15 @@ export default function KeyDetails({ identity, onShowToast }) {
               className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1"
             >
               {copiedKey === 'ecdh' ? (
-                <Check className="w-3.5 h-3.5 text-cyan-400" />
+                <Check className="w-3 h-3 text-sage-600" />
               ) : (
-                <Copy className="w-3.5 h-3.5" />
+                <Copy className="w-3 h-3" />
               )}
               <span>Copy</span>
             </button>
           </div>
 
-          <div className="space-y-1 text-xs">
-            <div className="flex justify-between text-slate-400 py-0.5 border-b border-slate-800/60">
-              <span>Key Type (`kty`):</span>
-              <span className="font-mono text-cyan-400">EC (Elliptic Curve)</span>
-            </div>
-            <div className="flex justify-between text-slate-400 py-0.5 border-b border-slate-800/60">
-              <span>Named Curve (`crv`):</span>
-              <span className="font-mono text-cyan-400">P-256 (secp256r1)</span>
-            </div>
-            <div className="flex justify-between text-slate-400 py-0.5 border-b border-slate-800/60">
-              <span>Key Derivation Purpose:</span>
-              <span className="font-mono text-cyan-400">P2P Shared Secret Derivation</span>
-            </div>
-            <div className="flex justify-between text-slate-400 py-0.5">
-              <span>Private Key Exportability:</span>
-              <span className="font-mono text-rose-400">Disabled (Non-Extractable)</span>
-            </div>
-          </div>
-
-          <pre className="p-4 bg-slate-950/90 border border-slate-800/90 rounded-xl text-xs font-mono text-cyan-300/90 overflow-x-auto select-all leading-relaxed shadow-inner">
+          <pre className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-mono text-slate-800 overflow-x-auto select-all leading-relaxed">
             {ecdhFormatted}
           </pre>
         </div>

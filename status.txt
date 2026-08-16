@@ -253,14 +253,16 @@ Foundational Security & Cryptographic Principles:
       * Cryptographic invariant maintained: TURN server acts strictly as an encrypted byte relay with zero plaintext access (E2EE holds 100%).
 - [x] Milestone 13 (Rebrand to Covert Chatter & Unified 1-Screen Pairing Flow):
       * Complete rebranding across UI, HTML meta tags, package names, console logs, and READMEs.
-      * Database migration in `client/src/utils/db.js`: updated DB name to `covert_chatter_identity` with automatic one-time migration from `whisper_drop_identity` (preserving keys & fingerprints seamlessly).
-      * Unified 1-screen pairing flow in `ConnectRoom.jsx`:
-        - "Start Chat" creates room and displays full-screen unified QR code + room code ("Show this to your friend").
-        - "Join Chat" immediately launches live camera scanner.
-        - Automatic chain on scan: QR decode -> identity authentication -> room join -> WebRTC connection -> E2EE key derivation ("Connecting to [fingerprint]...") -> active chat.
-        - Discreet "Manual code / JSON payload fallback" link.
-        - Session memory ("Chat with [fingerprint] again") for instant 1-click reconnecting after disconnects.
-      * Verified with clean production build (`npm run build`).
+      * Database migration in `client/src/utils/db.js`: updated DB name to `covert_chatter_identity` with automatic one-time migration from `whisper_drop_identity`.
+      * Unified 1-screen pairing flow in `ConnectRoom.jsx` with automatic on-scan chaining and session memory reconnect.
+- [x] Milestone 14 (Pale, Clean, Minimal Light Theme Redesign):
+      * Completely replaced dark cyberpunk theme with a calm, minimal light theme (#FAFAFA canvas, #FFFFFF cards, #E5E7EB borders).
+      * Integrated calm sage green / muted teal accent color (#6B9B7C) for actions, reserving red/amber strictly for burn timers and destructive actions.
+      * Removed neon glow effects and multi-badge clutter; folded technical encryption labels into a single small "Encrypted" badge with tap-to-expand details modal.
+      * Redesigned chat stream with modern Signal / iMessage style light bubbles and clean typography.
+      * Simplified message input bar to clean text field, file attachment, burn-on-read toggle, and send button with zero redundant status noise.
+      * Mobile-first responsive optimization with generous tap targets and clean camera QR scanning.
+      * Verified with clean production build (`npm run build` passing with 0 errors).
 - [x] Maintained comprehensive live tracking in `status.txt`.
 
 ================================================================================
