@@ -1,0 +1,90 @@
+/**
+ * Whisper Drop — Ephemeral Message Lifecycle & Anti-Persistence Subsystem
+ * 
+ * 🛡️ SECURITY INVARIANTS:
+ * -----------------------
+ * 1. VOLATILE MEMORY ONLY:
+ *    - Messages exist exclusively in transient JavaScript RAM (React component state).
+ *    - Messages are NEVER committed to localStorage, sessionStorage, IndexedDB, cookies,
+ *      ServiceWorker caches, or WebSQL.
+ *    - Refreshing the page, closing the tab, or unmounting the component immediately purges
+ *      all message text and derived session keys into garbage collection.
+ * 
+ * 2. AUTHENTICATED & TAMPER-PROOF EXPIRY:
+ *    - The expiry timestamp (`expiresAt`) and burn parameters are packaged inside the inner
+ *      message JSON structure BEFORE AES-256-GCM encryption and ECDSA signing.
+ *    - An adversary or compromised relay cannot tamper with or extend the message's lifespan
+ *      without invalidating the cryptographic authentication tag and digital signature.
+ * 
+ * 3. BURN-ON-READ TIMERS:
+ *    - If `burnOnRead` is enabled, a countdown timer initiates once the recipient renders
+ *      the message on screen, destroying it after 5 seconds.
+ */
+
+export const DEFAULT_TTL_SECONDS = 60;
+export const BURN_ON_READ_DELAY_SECONDS = 5;
+export const BACKGROUND_BLUR_PURGE_TIMEOUT_MS = 30000; // 30 seconds of tab blur triggers memory purge
+
+/**
+ * Construct an authenticated ephemeral message payload.
+ * 
+ * @param {string} text - Message plaintext
+ * @param {object} options
+ * @param {number} [options.ttlSeconds=60] - Lifespan in seconds
+ * @param {boolean} [options.burnOnRead=false] - If true, burns 5s after recipient renders it
+ * @returns {object} Inner message object to be encrypted
+ */
+export function createEphemeralPayload(text, { ttlSeconds = DEFAULT_TTL_SECONDS, burnOnRead = false } = {}) {
+  const now = Date.now();
+  const validTTL = Math.max(5, ttlSeconds || DEFAULT_TTL_SECONDS);
+
+  return {
+    id: `${now}-${Math.random().toString(36).slice(2, 7)}`,
+    text: text.trim(),
+    sentAt: now,
+    expiresAt: now + validTTL * 1000,
+    burnOnRead: Boolean(burnOnRead),
+    burnDelay: BURN_ON_READ_DELAY_SECONDS,
+  };
+}
+
+/**
+ * Compute the remaining lifespan of a message in seconds.
+ * 
+ * @param {object} message - Ephemeral message record
+ * @param {number} [currentTime=Date.now()]
+ * @returns {number} Seconds remaining (0 if expired)
+ */
+export function getRemainingSeconds(message, currentTime = Date.now()) {
+  if (!message) return 0;
+
+  // If a burn-on-read timer is active, use the burn deadline
+  let targetDeadline = message.expiresAt;
+  if (message.burnDeadline) {
+    targetDeadline = Math.min(targetDeadline, message.burnDeadline);
+  }
+
+  const remainingMs = targetDeadline - currentTime;
+  return Math.max(0, Math.ceil(remainingMs / 1000));
+}
+
+/**
+ * Check if a message has reached its expiration deadline.
+ * 
+ * @param {object} message
+ * @param {number} [currentTime=Date.now()]
+ * @returns {boolean} True if message should be deleted from memory
+ */
+export function isMessageExpired(message, currentTime = Date.now()) {
+  if (!message) return true;
+
+  if (message.burnDeadline && currentTime >= message.burnDeadline) {
+    return true;
+  }
+
+  if (message.expiresAt && currentTime >= message.expiresAt) {
+    return true;
+  }
+
+  return false;
+}
