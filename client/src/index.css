@@ -593,89 +593,126 @@ input:focus, textarea:focus, select:focus {
   animation: heartPop 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* Comic / Idol Bubble Chat Wallpaper */
-.chat-yellow-wallpaper {
-  background: linear-gradient(180deg, #FBF658 0%, #FAFA68 35%, #FFF865 70%, #F8F34E 100%);
+/* ========================================================================= */
+/* DARK NEON CHAT SYSTEM & BUBBLES                                           */
+/* ========================================================================= */
+
+.chat-dark-container {
+  background-color: #121212;
 }
 
-/* Incoming (Peer) Lime Bubble with 2px Black Outline */
-.bubble-comic-peer {
-  background: linear-gradient(180deg, #CEF97A 0%, #AEEF4C 100%);
-  color: #000000;
-  border: 2px solid #000000;
-  border-radius: 18px 18px 18px 4px;
+/* My Sent Messages (Right-aligned): #D4FF27 Chartreuse Fill with #121212 Dark Text */
+.bubble-mine {
+  background-color: #D4FF27;
+  color: #121212;
+  border-radius: 20px 4px 20px 20px;
   padding: 12px 18px;
-  font-size: 15.5px;
-  font-weight: 500;
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 15px;
   line-height: 1.45;
-  word-break: break-word;
-  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.12);
-  transition: transform 0.15s ease;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: break-word;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), 0 0 14px rgba(212, 255, 39, 0.18);
 }
 
-/* Outgoing (My Sent) Crisp White Bubble with 2px Black Outline */
-.bubble-comic-mine {
-  background-color: #FFFFFF;
-  color: #000000;
-  border: 2px solid #000000;
-  border-radius: 18px 18px 4px 18px;
+/* Received Messages from Peer (Left-aligned): #E8F5E1 Pale Mint Fill with #121212 Dark Text */
+.bubble-peer {
+  background-color: #E8F5E1;
+  color: #121212;
+  border-radius: 4px 20px 20px 20px;
   padding: 12px 18px;
-  font-size: 15.5px;
-  font-weight: 500;
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 15px;
   line-height: 1.45;
-  word-break: break-word;
-  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.12);
-  transition: transform 0.15s ease;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: break-word;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-/* 40px Circle Buttons with 2px Black Border */
-.chat-circle-btn {
+.chat-avatar-40 {
   width: 40px;
   height: 40px;
   min-width: 40px;
   min-height: 40px;
   border-radius: 9999px;
-  border: 2px solid #000000;
+  border: 2px solid #D4FF27;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #FFFFFF;
-  color: #000000;
+  background-color: #1C1C1C;
+  color: #D4FF27;
+  font-weight: 700;
+  font-size: 14px;
+  user-select: none;
+  box-shadow: 0 0 10px rgba(212, 255, 39, 0.2);
+}
+
+.chat-icon-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 9999px;
+  border: 1px solid #A8CC19;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1C1C1C;
+  color: #A8CC19;
   cursor: pointer;
-  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.15);
-  transition: all 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
 }
 
-.chat-circle-btn:hover:not(:disabled) {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 2px 4px 0px rgba(0, 0, 0, 0.2);
+.chat-icon-btn:hover:not(:disabled) {
+  background-color: #242424;
+  border-color: #D4FF27;
+  color: #D4FF27;
+  box-shadow: 0 0 12px rgba(212, 255, 39, 0.3);
+  transform: scale(1.05);
 }
 
-.chat-circle-btn:active:not(:disabled) {
-  transform: translateY(0px) scale(0.95);
-  box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.2);
+.chat-icon-btn:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
-/* Comic Send Button */
-.chat-comic-send-btn {
+.chat-send-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 9999px;
+  background-color: #D4FF27;
+  color: #121212;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  color: #16A34A;
+  border: 1px solid #D4FF27;
+  box-shadow: 0 0 12px rgba(212, 255, 39, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.chat-comic-send-btn:hover:not(:disabled) {
-  transform: scale(1.15) rotate(-6deg);
+.chat-send-btn:hover:not(:disabled) {
+  background-color: #E0FF47;
+  box-shadow: 0 0 20px rgba(212, 255, 39, 0.6);
+  transform: scale(1.06);
 }
 
-.chat-comic-send-btn:active:not(:disabled) {
-  transform: scale(0.92);
+.chat-send-btn:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
-.chat-comic-send-btn:disabled {
+.chat-send-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+  box-shadow: none;
 }
