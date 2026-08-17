@@ -31,7 +31,13 @@ import {
   FileImage,
   UserCheck,
   ShieldCheck,
-  HelpCircle
+  HelpCircle,
+  MoreHorizontal,
+  MoreVertical,
+  ChevronLeft,
+  Languages,
+  CheckCheck,
+  Heart
 } from 'lucide-react';
 import { PeerSession, getDefaultSignalingUrl } from '../utils/webrtc';
 import { validatePeerIdentityPayload } from '../utils/crypto';
@@ -69,6 +75,7 @@ export default function ConnectRoom({
   const [showManualPeerInput, setShowManualPeerInput] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
 
   // Pairing States
   const [isJoinScannerOpen, setIsJoinScannerOpen] = useState(false);
@@ -577,15 +584,15 @@ export default function ConnectRoom({
       <div id="covert-file-temp-scanner" style={{ display: 'none' }} />
 
       {/* Top Subtle Config Bar */}
-      <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-        <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-sage-500" />
-          <span>Peer-to-Peer Tunnel</span>
+      <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-[#D4FF27] shadow-[0_0_8px_rgba(212,255,39,0.6)]" />
+          <span className="font-semibold text-white">Peer-to-Peer Tunnel</span>
         </div>
 
         <button
           onClick={() => setShowServerConfig(!showServerConfig)}
-          className="text-[11px] text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"
+          className="text-[11px] text-[#A8CC19] hover:text-[#D4FF27] flex items-center gap-1 transition-colors py-1 px-2 rounded-lg hover:bg-[#1C1C1C]"
         >
           <Server className="w-3 h-3" />
           <span>Server config</span>
@@ -594,10 +601,10 @@ export default function ConnectRoom({
       </div>
 
       {showServerConfig && (
-        <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2 text-xs shadow-sm">
+        <div className="p-4 bg-[#1C1C1C] border border-[#A8CC19]/40 rounded-2xl space-y-3 text-xs shadow-xl animate-slide-up">
           <div className="flex items-center justify-between">
-            <span className="font-medium text-slate-700">Signaling Server URL</span>
-            <span className="text-[11px] text-slate-400">Default: {getDefaultSignalingUrl()}</span>
+            <span className="font-bold text-white">Signaling Server URL</span>
+            <span className="text-[11px] text-slate-400 font-mono">Default: {getDefaultSignalingUrl()}</span>
           </div>
           <div className="flex gap-2">
             <input
@@ -606,11 +613,11 @@ export default function ConnectRoom({
               onChange={(e) => setCustomServerUrl(e.target.value)}
               disabled={status !== 'idle' && status !== 'disconnected' && status !== 'error'}
               placeholder={getDefaultSignalingUrl()}
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800"
+              className="flex-1 bg-[#121212] border border-[#A8CC19]/50 focus:border-[#D4FF27] rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 font-mono"
             />
             <button
               onClick={() => setCustomServerUrl(getDefaultSignalingUrl())}
-              className="btn-secondary text-xs px-3 py-1.5"
+              className="btn-secondary text-xs px-3 py-2"
             >
               Reset
             </button>
@@ -619,20 +626,20 @@ export default function ConnectRoom({
       )}
 
       {/* ======================================================================== */}
-      {/* 1. LOBBY STATE (Clean Pale Light Theme)                                 */}
+      {/* 1. LOBBY STATE (Dark Neon Charcoal Cards)                                */}
       {/* ========================================================================= */}
       {status === 'idle' || status === 'disconnected' || status === 'error' ? (
         <div className="space-y-5">
           {/* Reconnect Banner if peer is remembered in session */}
           {savedPeer && (
-            <div className="glass-panel p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-sage-200 bg-sage-50/50">
+            <div className="glass-panel p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-[#A8CC19]/50 bg-[#1C1C1C] shadow-lg">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-white border border-sage-200 text-sage-600">
+                <div className="p-2.5 rounded-xl bg-[#121212] border border-[#D4FF27] text-[#D4FF27] shadow-[0_0_10px_rgba(212,255,39,0.25)]">
                   <UserCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-900">Paired Peer</p>
-                  <p className="text-xs text-slate-500 font-mono">
+                  <p className="text-xs font-bold text-white">Paired Peer</p>
+                  <p className="text-xs text-[#A8CC19] font-mono">
                     {savedPeer.fingerprint.slice(0, 16)}...
                   </p>
                 </div>
@@ -641,14 +648,14 @@ export default function ConnectRoom({
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   onClick={handleStartChat}
-                  className="btn-primary text-xs py-1.5 px-3 flex-1 sm:flex-initial flex items-center justify-center gap-1.5"
+                  className="btn-primary text-xs py-2 px-3.5 flex-1 sm:flex-initial flex items-center justify-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Start Chat</span>
                 </button>
                 <button
                   onClick={clearSessionPeer}
-                  className="btn-secondary text-xs py-1.5 px-2 text-slate-400 hover:text-slate-600"
+                  className="btn-secondary text-xs py-2 px-2.5 text-slate-400 hover:text-white"
                   title="Forget peer"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -660,20 +667,20 @@ export default function ConnectRoom({
           {/* Clean 2-Card Pairing Action Hub */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Start Chat Card */}
-            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-slate-300 transition-all">
-              <div className="space-y-2">
-                <div className="w-12 h-12 rounded-xl bg-sage-50 border border-sage-200 flex items-center justify-center text-sage-600">
+            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-[#D4FF27]/60 hover:shadow-[0_0_20px_rgba(212,255,39,0.15)] transition-all bg-[#1C1C1C]">
+              <div className="space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#121212] border border-[#D4FF27] flex items-center justify-center text-[#D4FF27] shadow-[0_0_12px_rgba(212,255,39,0.25)]">
                   <QrCode className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">Start Chat</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <h3 className="text-lg font-bold text-white">Start Chat</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
                   Create a secure room and show your QR code to your friend to connect.
                 </p>
               </div>
 
               <button
                 onClick={handleStartChat}
-                className="btn-primary w-full py-3 text-sm font-semibold flex items-center justify-center gap-2"
+                className="btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2"
               >
                 <QrCode className="w-4 h-4" />
                 <span>Start Chat & Show QR</span>
@@ -681,22 +688,22 @@ export default function ConnectRoom({
             </div>
 
             {/* Join Chat Card */}
-            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-slate-300 transition-all">
-              <div className="space-y-2">
-                <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-[#D4FF27]/60 hover:shadow-[0_0_20px_rgba(212,255,39,0.15)] transition-all bg-[#1C1C1C]">
+              <div className="space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#121212] border border-[#A8CC19] flex items-center justify-center text-[#A8CC19]">
                   <Camera className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">Join Chat</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <h3 className="text-lg font-bold text-white">Join Chat</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
                   Open your camera to scan your friend's QR code and automatically connect.
                 </p>
               </div>
 
               <button
                 onClick={() => startCameraScanner()}
-                className="btn-secondary w-full py-3 text-sm font-semibold flex items-center justify-center gap-2"
+                className="btn-secondary w-full py-3 text-sm font-bold flex items-center justify-center gap-2"
               >
-                <Camera className="w-4 h-4 text-slate-600" />
+                <Camera className="w-4 h-4 text-[#A8CC19]" />
                 <span>Join Chat (Scan QR)</span>
               </button>
             </div>
@@ -707,33 +714,33 @@ export default function ConnectRoom({
             <button
               type="button"
               onClick={() => setShowManualPeerInput(!showManualPeerInput)}
-              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-xs sm:text-sm font-medium shadow-xs transition-all active:scale-[0.98] touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-400"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl border border-[#A8CC19]/40 hover:border-[#D4FF27] bg-[#1C1C1C] hover:bg-[#242424] text-slate-300 hover:text-white text-xs sm:text-sm font-medium shadow-md transition-all active:scale-[0.98] touch-manipulation focus:outline-none focus-visible:ring-1 focus-visible:ring-[#D4FF27]"
               aria-expanded={showManualPeerInput}
             >
-              <FileCode className="w-4 h-4 text-slate-500" />
+              <FileCode className="w-4 h-4 text-[#A8CC19]" />
               <span>Enter room code or paste JSON manually</span>
               {showManualPeerInput ? (
-                <ChevronUp className="w-4 h-4 text-slate-400 ml-0.5" />
+                <ChevronUp className="w-4 h-4 text-[#A8CC19] ml-0.5" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400 ml-0.5" />
+                <ChevronDown className="w-4 h-4 text-[#A8CC19] ml-0.5" />
               )}
             </button>
           </div>
 
           {showManualPeerInput && (
-            <div className="glass-panel p-5 space-y-4 max-w-md mx-auto animate-slide-up">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span className="text-xs font-semibold text-slate-700">Manual Room Connect</span>
+            <div className="glass-panel p-5 space-y-4 max-w-md mx-auto animate-slide-up bg-[#1C1C1C] border-[#A8CC19]/50">
+              <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-2">
+                <span className="text-xs font-bold text-white">Manual Room Connect</span>
                 <button
                   onClick={() => setShowManualPeerInput(false)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="text-slate-400 hover:text-white"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-medium text-slate-500 block">
+                <label className="text-[11px] font-medium text-slate-400 block">
                   6-Character Room Code:
                 </label>
                 <div className="flex gap-2">
@@ -743,7 +750,7 @@ export default function ConnectRoom({
                     value={joinInput}
                     onChange={(e) => setJoinInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                     placeholder="E.G. ABC123"
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-mono text-center text-sm font-bold tracking-widest text-slate-800 uppercase"
+                    className="flex-1 bg-[#121212] border border-[#A8CC19]/50 focus:border-[#D4FF27] rounded-xl px-3 py-2 font-mono text-center text-sm font-bold tracking-widest text-[#D4FF27] uppercase"
                   />
                   <button
                     onClick={() => handleDirectJoinRoom(joinInput)}
@@ -755,8 +762,8 @@ export default function ConnectRoom({
                 </div>
               </div>
 
-              <form onSubmit={handleManualPeerValidate} className="space-y-2 pt-2 border-t border-slate-100">
-                <label className="text-[11px] font-medium text-slate-500 block">
+              <form onSubmit={handleManualPeerValidate} className="space-y-2 pt-2 border-t border-[#2A2A2A]">
+                <label className="text-[11px] font-medium text-slate-400 block">
                   Or Paste Raw Peer Identity JSON:
                 </label>
                 <textarea
@@ -764,13 +771,13 @@ export default function ConnectRoom({
                   value={rawPeerJsonInput}
                   onChange={(e) => setRawPeerJsonInput(e.target.value)}
                   placeholder='{"protocol":"covert-chatter",...}'
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono text-slate-800"
+                  className="w-full bg-[#121212] border border-[#A8CC19]/50 focus:border-[#D4FF27] rounded-xl p-2.5 text-xs font-mono text-white placeholder:text-slate-600"
                 />
                 <div className="flex justify-end">
                   <button
                     type="submit"
                     disabled={!rawPeerJsonInput.trim()}
-                    className="btn-secondary text-xs py-1 px-3 disabled:opacity-40"
+                    className="btn-secondary text-xs py-1.5 px-3 disabled:opacity-40"
                   >
                     Validate & Link
                   </button>
@@ -782,39 +789,39 @@ export default function ConnectRoom({
       ) : null}
 
       {/* ========================================================================= */}
-      {/* 2. CAMERA SCANNER (Clean Minimal Viewfinder)                             */}
+      {/* 2. CAMERA SCANNER (Dark Neon Viewfinder)                                  */}
       {/* ========================================================================= */}
       {isJoinScannerOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl border border-slate-200 animate-scale-up">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-[#1C1C1C] rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-[#A8CC19]/60 animate-scale-up">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Camera className="w-4 h-4 text-slate-700" />
-                <h3 className="text-sm font-bold text-slate-900">Scan QR Code</h3>
+                <Camera className="w-4 h-4 text-[#D4FF27]" />
+                <h3 className="text-sm font-bold text-white">Scan QR Code</h3>
               </div>
               <button
                 onClick={stopCameraScanner}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#242424]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Clean Viewfinder Frame */}
-            <div className="relative rounded-xl overflow-hidden bg-slate-950 min-h-[260px] flex items-center justify-center">
+            {/* Viewfinder Frame */}
+            <div className="relative rounded-xl overflow-hidden bg-black min-h-[260px] flex items-center justify-center border border-[#A8CC19]/40">
               <div id={scannerContainerId} className="w-full max-w-xs overflow-hidden rounded-lg" />
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="w-48 h-48 border border-white/60 rounded-xl" />
+                <div className="w-48 h-48 border-2 border-[#D4FF27] rounded-2xl shadow-[0_0_15px_rgba(212,255,39,0.4)]" />
               </div>
             </div>
 
             {cameraError && (
-              <p className="text-xs text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200">
+              <p className="text-xs text-rose-400 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/30">
                 {cameraError}
               </p>
             )}
 
-            <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#2A2A2A]">
               <input
                 type="file"
                 ref={qrFileInputRef}
@@ -827,7 +834,7 @@ export default function ConnectRoom({
                 disabled={isProcessingFile}
                 className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 flex-1 justify-center"
               >
-                <FileImage className="w-3.5 h-3.5 text-slate-500" />
+                <FileImage className="w-3.5 h-3.5 text-[#A8CC19]" />
                 <span>{isProcessingFile ? 'Reading...' : 'Upload Image'}</span>
               </button>
               <button
@@ -845,51 +852,53 @@ export default function ConnectRoom({
       {/* 3. HOST WAITING STATE (Show QR to Friend)                                */}
       {/* ========================================================================= */}
       {status === 'waiting' && roomCode && (
-        <div className="glass-panel p-6 sm:p-8 text-center max-w-md mx-auto space-y-5 animate-scale-up">
+        <div className="glass-panel p-6 sm:p-8 text-center max-w-md mx-auto space-y-5 animate-scale-up bg-[#1C1C1C] border-[#A8CC19]/50">
           <div className="space-y-1">
-            <span className="badge-sage text-xs">Room Ready</span>
-            <h3 className="text-lg font-bold text-slate-900">Show this to your friend</h3>
-            <p className="text-xs text-slate-500">
+            <span className="badge-neon text-xs">Room Ready</span>
+            <h3 className="text-lg font-bold text-white">Show this to your friend</h3>
+            <p className="text-xs text-slate-300">
               Scan this code with "Join Chat" to begin
             </p>
           </div>
 
-          <div className="p-4 bg-white rounded-xl border border-slate-200 inline-block shadow-sm">
+          <div className="p-4 bg-white rounded-2xl border-2 border-[#D4FF27] inline-block shadow-[0_0_20px_rgba(212,255,39,0.2)]">
             <QRCodeSVG
               value={hostQrPayload}
               size={200}
               level="M"
               includeMargin={false}
+              bgColor="#FFFFFF"
+              fgColor="#121212"
             />
           </div>
 
           <div className="space-y-1">
-            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-medium">
+            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
               Room Code
             </span>
             <div className="flex items-center justify-center gap-2">
-              <span className="font-mono text-2xl font-bold tracking-widest text-slate-800 bg-slate-50 px-4 py-1.5 rounded-lg border border-slate-200 select-all">
+              <span className="font-mono text-2xl font-bold tracking-widest text-[#D4FF27] bg-[#121212] px-5 py-2 rounded-xl border border-[#A8CC19]/50 select-all shadow-[0_0_12px_rgba(212,255,39,0.2)]">
                 {roomCode}
               </span>
               <button
                 onClick={handleCopyRoomCode}
-                className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                className="p-2.5 rounded-xl bg-[#121212] border border-[#A8CC19]/50 hover:border-[#D4FF27] text-white hover:text-[#D4FF27] transition-all"
                 title="Copy Code"
               >
-                {copiedCode ? <Check className="w-4 h-4 text-sage-600" /> : <Copy className="w-4 h-4" />}
+                {copiedCode ? <Check className="w-4 h-4 text-[#D4FF27]" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-2 text-xs text-slate-500 pt-1">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-sage-600" />
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-300 pt-1">
+            <Loader2 className="w-4 h-4 animate-spin text-[#D4FF27]" />
             <span>Waiting for friend to connect...</span>
           </div>
 
           <div className="pt-2">
             <button
               onClick={handleDisconnect}
-              className="btn-secondary text-xs py-1.5 px-4"
+              className="btn-secondary text-xs py-2 px-4"
             >
               Cancel
             </button>
@@ -901,16 +910,16 @@ export default function ConnectRoom({
       {/* 4. CONNECTING STATE                                                      */}
       {/* ========================================================================= */}
       {(status === 'creating' || status === 'joining' || status === 'connecting') && status !== 'waiting' && (
-        <div className="glass-panel p-8 text-center max-w-sm mx-auto space-y-4 animate-scale-up">
-          <div className="w-10 h-10 rounded-xl bg-sage-50 border border-sage-200 flex items-center justify-center text-sage-600 mx-auto">
-            <RefreshCw className="w-5 h-5 animate-spin" />
+        <div className="glass-panel p-8 text-center max-w-sm mx-auto space-y-4 animate-scale-up bg-[#1C1C1C] border-[#A8CC19]/50">
+          <div className="w-12 h-12 rounded-2xl bg-[#121212] border border-[#D4FF27] flex items-center justify-center text-[#D4FF27] mx-auto shadow-[0_0_15px_rgba(212,255,39,0.3)]">
+            <RefreshCw className="w-6 h-6 animate-spin" />
           </div>
 
           <div className="space-y-1">
-            <h3 className="text-base font-semibold text-slate-900">
+            <h3 className="text-base font-bold text-white">
               {verifiedPeer ? `Connecting to ${verifiedPeer.fingerprint.slice(0, 8)}...` : 'Connecting...'}
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-300">
               Establishing end-to-end encrypted session
             </p>
           </div>
@@ -927,392 +936,520 @@ export default function ConnectRoom({
       )}
 
       {/* ========================================================================= */}
-      {/* 5. CONNECTED CHAT SCREEN (Clean Speech-Bubble Messenger Style)            */}
+      {/* 5. CONNECTED CHAT SCREEN (Reference-Matched Comic Bubble Chat System)     */}
       {/* ========================================================================= */}
-      {status === 'connected' && (
-        <div 
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`glass-panel overflow-hidden flex flex-col h-[650px] relative transition-all bg-white border border-slate-200/90 shadow-sm ${
-            isDraggingOver ? 'ring-2 ring-sage-500 bg-sage-50/20' : ''
-          }`}
-        >
-          {/* Hidden File Input */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileInputChange}
-            className="hidden"
-          />
+      {status === 'connected' && (() => {
+        const lastSentMessage = [...messages].reverse().find((m) => m.sender === 'me');
+        const lastSentMessageId = lastSentMessage ? lastSentMessage.id : null;
+        const peerInitials = verifiedPeer?.fingerprint ? verifiedPeer.fingerprint.slice(0, 2).toUpperCase() : 'PE';
+        const peerDisplayName = verifiedPeer?.fingerprint ? `Peer ${verifiedPeer.fingerprint.slice(0, 8)}` : 'Connected Peer';
 
-          {/* Drag Overlay */}
-          {isDraggingOver && (
-            <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm border-2 border-dashed border-sage-500 rounded-2xl flex flex-col items-center justify-center p-6 space-y-2 pointer-events-none animate-fade-in">
-              <UploadCloud className="w-10 h-10 text-sage-600 animate-bounce" />
-              <h3 className="text-sm font-bold text-slate-900">Drop file to send</h3>
-              <p className="text-xs text-slate-500">Encrypted in 16KB blocks (Up to 25MB)</p>
-            </div>
-          )}
+        return (
+          <div 
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`rounded-[28px] border-2 border-black overflow-hidden flex flex-col h-[660px] relative transition-all chat-yellow-wallpaper shadow-2xl ${
+              isDraggingOver ? 'ring-4 ring-emerald-500/50' : ''
+            }`}
+          >
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileInputChange}
+              className="hidden"
+            />
 
-          {/* Thin, Unobtrusive Chat Header Bar */}
-          <div className="px-4 py-2.5 bg-white border-b border-slate-200/80 flex items-center justify-between gap-3 shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
-              {/* Peer Avatar */}
-              <div className="avatar-badge bg-sage-50 border border-sage-200 text-sage-700 font-mono shadow-xs">
-                {verifiedPeer?.fingerprint ? verifiedPeer.fingerprint.slice(0, 2).toUpperCase() : 'P'}
+            {/* Drag Overlay */}
+            {isDraggingOver && (
+              <div className="absolute inset-0 z-50 bg-[#FBF658]/95 border-2 border-dashed border-black rounded-[26px] flex flex-col items-center justify-center p-6 space-y-2 pointer-events-none animate-fade-in">
+                <UploadCloud className="w-12 h-12 text-black animate-bounce" />
+                <h3 className="text-base font-extrabold text-black">Drop file to send</h3>
+                <p className="text-xs text-black/80 font-medium">Encrypted in 16KB blocks (Up to 25MB)</p>
               </div>
+            )}
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                    {verifiedPeer?.fingerprint ? `Peer ${verifiedPeer.fingerprint.slice(0, 8)}` : 'Secure Peer'}
-                  </span>
+            {/* HEADER (Exact Reference: Left Circle '<', Peer Avatar + Name, Right Circle '⋮') */}
+            <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 shrink-0 relative z-20">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Left Circular Back Button '<' */}
+                <button
+                  type="button"
+                  onClick={handleDisconnect}
+                  className="chat-circle-btn"
+                  title="Leave Room & Disconnect"
+                  aria-label="Back"
+                >
+                  <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+                </button>
 
-                  {/* Single Clean Encrypted Badge with Popover Detail */}
-                  <button
-                    onClick={() => setShowSecurityModal(true)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-sage-50 text-sage-700 border border-sage-200 hover:bg-sage-100 transition-colors cursor-pointer"
-                    title="Click for security & encryption details"
+                {/* Peer avatar circle with 2px black border */}
+                <div className="relative shrink-0">
+                  <div 
+                    className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-full border-2 border-black bg-[#CEF97A] text-black font-extrabold text-sm flex items-center justify-center font-mono select-none shadow-xs"
+                    title={verifiedPeer?.fingerprint || 'Peer'}
                   >
-                    <Lock className="w-2.5 h-2.5 text-sage-600" />
-                    <span>Encrypted</span>
-                  </button>
-
-                  {/* Subtle Connection Quality Pill */}
-                  {connectionType && (
-                    <span className="badge-neutral text-[10px] py-0.2 px-1.5">
-                      {connectionType === 'direct' ? '⚡ Direct' : '🖥️ Relay'}
-                    </span>
-                  )}
+                    {peerInitials}
+                  </div>
+                  {/* Connected Status Dot */}
+                  <span 
+                    className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#22C55E] rounded-full border border-black"
+                    title="Connected"
+                  />
                 </div>
-                <p className="text-[10px] text-slate-400 truncate">Room: {roomCode}</p>
+
+                {/* Peer Name & Room Details */}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base sm:text-lg font-black text-black tracking-tight truncate">
+                      {peerDisplayName}
+                    </h2>
+
+                    {/* Encrypted Pill Badge */}
+                    <button
+                      onClick={() => setShowSecurityModal(true)}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white text-black border-2 border-black shadow-xs hover:bg-black hover:text-white transition-all cursor-pointer"
+                      title="Click for security & encryption details"
+                    >
+                      <Lock className="w-2.5 h-2.5" />
+                      <span>Encrypted</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-black/70 font-mono font-medium truncate">
+                    Room: {roomCode} {connectionType ? `• ${connectionType === 'direct' ? '⚡ Direct' : '🖥️ Relay'}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Right: Circular '⋮' / '⋯' 3-Dots Button */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+                  className="chat-circle-btn"
+                  title="Session Options"
+                  aria-label="Options"
+                >
+                  <MoreVertical className="w-5 h-5 stroke-[2.5]" />
+                </button>
+
+                {/* Options Dropdown Menu */}
+                {showOptionsMenu && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-30" 
+                      onClick={() => setShowOptionsMenu(false)} 
+                    />
+                    <div className="absolute right-0 top-12 z-40 w-56 bg-white rounded-2xl border-2 border-black p-2 shadow-2xl space-y-1 animate-scale-up">
+                      <div className="px-3 py-2 border-b border-black/10">
+                        <p className="text-xs font-black text-black">Session Options</p>
+                        <p className="text-[10px] text-slate-500 font-mono truncate">Room: {roomCode}</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleCopyRoomCode();
+                          setShowOptionsMenu(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-black hover:bg-slate-100 flex items-center gap-2 transition-colors font-semibold cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Room Code</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSecurityModal(true);
+                          setShowOptionsMenu(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-black hover:bg-slate-100 flex items-center gap-2 transition-colors font-semibold cursor-pointer"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Security & Encryption</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowOptionsMenu(false);
+                          handleDisconnect();
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors font-bold cursor-pointer border-t border-black/10 mt-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Leave Room & Wipe</span>
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
-            <button
-              onClick={handleDisconnect}
-              className="btn-secondary text-xs py-1 px-2.5 text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 shrink-0 transition-colors flex items-center gap-1"
-              title="Leave room"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Leave</span>
-            </button>
-          </div>
-
-          {/* Security Details Modal (When tapping Encrypted badge) */}
-          {showSecurityModal && (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-              <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl border border-slate-200 animate-scale-up">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div className="flex items-center gap-2 text-sage-700">
-                    <ShieldCheck className="w-5 h-5" />
-                    <h3 className="text-sm font-bold text-slate-900">Session Security</h3>
+            {/* Security Details Modal (When triggered from Options) */}
+            {showSecurityModal && (
+              <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+                <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl border-2 border-black animate-scale-up">
+                  <div className="flex items-center justify-between border-b border-black/10 pb-2">
+                    <div className="flex items-center gap-2 text-black">
+                      <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                      <h3 className="text-base font-black text-black">Session Security</h3>
+                    </div>
+                    <button
+                      onClick={() => setShowSecurityModal(false)}
+                      className="p-1 text-slate-400 hover:text-black rounded-lg"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
+
+                  <div className="space-y-2.5 text-xs text-black">
+                    <div className="p-3 bg-[#FAF9F6] border-2 border-black rounded-xl space-y-0.5">
+                      <p className="font-extrabold text-black">Symmetric Encryption</p>
+                      <p className="font-mono text-[11px] text-slate-700">AES-256-GCM (Fresh 12-byte IV per message)</p>
+                    </div>
+                    <div className="p-3 bg-[#FAF9F6] border-2 border-black rounded-xl space-y-0.5">
+                      <p className="font-extrabold text-black">Digital Signatures</p>
+                      <p className="font-mono text-[11px] text-slate-700">ECDSA P-256 (SHA-256 Digest)</p>
+                    </div>
+                    <div className="p-3 bg-[#FAF9F6] border-2 border-black rounded-xl space-y-0.5">
+                      <p className="font-extrabold text-black">Key Agreement</p>
+                      <p className="font-mono text-[11px] text-slate-700">ECDH P-256 (Diffie-Hellman Shared Secret)</p>
+                    </div>
+                    <div className="p-3 bg-[#FAF9F6] border-2 border-black rounded-xl space-y-0.5">
+                      <p className="font-extrabold text-black">Ephemeral Storage</p>
+                      <p className="text-[11px] text-slate-600">Volatile RAM only. Wiped on leave, tab close, or 30s background blur.</p>
+                    </div>
+                  </div>
+
                   <button
                     onClick={() => setShowSecurityModal(false)}
-                    className="text-slate-400 hover:text-slate-600"
+                    className="w-full py-2 text-xs font-bold bg-black text-white rounded-xl border-2 border-black cursor-pointer hover:bg-slate-800"
                   >
-                    <X className="w-4 h-4" />
+                    Close
                   </button>
                 </div>
-
-                <div className="space-y-2.5 text-xs text-slate-600">
-                  <div className="p-2.5 bg-slate-50 rounded-lg space-y-1">
-                    <p className="font-semibold text-slate-800">Symmetric Encryption</p>
-                    <p className="font-mono text-[11px] text-slate-600">AES-256-GCM (Fresh 12-byte IV per message)</p>
-                  </div>
-                  <div className="p-2.5 bg-slate-50 rounded-lg space-y-1">
-                    <p className="font-semibold text-slate-800">Digital Signatures</p>
-                    <p className="font-mono text-[11px] text-slate-600">ECDSA P-256 (SHA-256 Digest)</p>
-                  </div>
-                  <div className="p-2.5 bg-slate-50 rounded-lg space-y-1">
-                    <p className="font-semibold text-slate-800">Key Agreement</p>
-                    <p className="font-mono text-[11px] text-slate-600">ECDH P-256 (Diffie-Hellman Shared Secret)</p>
-                  </div>
-                  <div className="p-2.5 bg-slate-50 rounded-lg space-y-1">
-                    <p className="font-semibold text-slate-800">Ephemeral Storage</p>
-                    <p className="text-[11px] text-slate-500">Volatile RAM only. Wiped on leave, tab close, or 30s background blur.</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowSecurityModal(false)}
-                  className="btn-secondary w-full py-2 text-xs"
-                >
-                  Close
-                </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Main Chat Stream with Speech Bubbles and Avatar Placeholders */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#f8faf9]">
-            {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-2.5">
-                <div className="w-10 h-10 rounded-full bg-sage-50 border border-sage-200 flex items-center justify-center text-sage-600">
-                  <Sparkles className="w-5 h-5" />
+            {/* CHAT BUBBLES STREAM (Reference-Matched: Lime peer bubbles, Crisp White sent bubbles with left green checkmark) */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 text-black space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-white border-2 border-black flex items-center justify-center text-black shadow-xs">
+                    <Sparkles className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <p className="text-base font-extrabold text-black">Encrypted tunnel established</p>
+                  <p className="text-xs text-black/80 max-w-xs font-medium leading-relaxed">
+                    Messages are end-to-end encrypted with AES-256-GCM and ephemeral in volatile RAM.
+                  </p>
                 </div>
-                <p className="text-xs font-semibold text-slate-700">Encrypted session active</p>
-                <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed">
-                  Speech bubbles are end-to-end encrypted with AES-256-GCM. Messages self-destruct when closed.
-                </p>
-              </div>
-            ) : (
-              messages.map((msg) => {
-                const isMe = msg.sender === 'me';
-                const remainingSecs = getRemainingSeconds(msg, currentTime);
-                const isBurn = msg.burnOnRead;
-                const isFile = msg.type === 'file';
-                const peerInitial = verifiedPeer?.fingerprint ? verifiedPeer.fingerprint.slice(0, 2).toUpperCase() : 'P';
-                const timeStr = msg.timestamp
-                  ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : '';
+              ) : (
+                messages.map((msg) => {
+                  const isMe = msg.sender === 'me';
+                  const remainingSecs = getRemainingSeconds(msg, currentTime);
+                  const isBurn = msg.burnOnRead;
+                  const isFile = msg.type === 'file';
+                  const isMostRecentSent = isMe && msg.id === lastSentMessageId;
+                  const timeStr = msg.timestamp
+                    ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : '';
 
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex items-end gap-2.5 ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in ${
-                      remainingSecs <= 2 ? 'opacity-40 transition-opacity' : 'opacity-100'
-                    }`}
-                  >
-                    {/* Peer Avatar on the left side of peer bubbles */}
-                    {!isMe && (
-                      <div 
-                        className="avatar-badge bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-mono shadow-xs mb-0.5"
-                        title={verifiedPeer?.fingerprint || 'Peer'}
+                  if (isMe) {
+                    // SENT (MY) MESSAGE: White bubble, Docked left tick + timestamp (e.g. ✓ 11:40)
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex justify-end items-end gap-2 animate-bubble-pop ${
+                          remainingSecs <= 2 ? 'opacity-40 transition-opacity' : 'opacity-100'
+                        }`}
                       >
-                        {peerInitial}
+                        {/* Outside Left: Green Checkmark + Timestamp + Burn info */}
+                        <div className="flex flex-col items-end gap-0.5 select-none pb-1 shrink-0">
+                          {isBurn && (
+                            <span className="inline-flex items-center gap-0.5 font-bold text-[10px] text-amber-900 bg-amber-200/90 border border-amber-500 px-1.5 py-0.2 rounded-full mb-0.5 shadow-xs">
+                              <Flame className="w-2.5 h-2.5 text-amber-900" />
+                              <span>{remainingSecs}s</span>
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1 text-[11px] font-bold text-black/80 font-mono">
+                            <Check className="w-3.5 h-3.5 text-[#16A34A] stroke-[3] animate-check-pop" />
+                            <span>{timeStr}</span>
+                          </div>
+                        </div>
+
+                        {/* White Sent Bubble */}
+                        <div className="relative max-w-[78%] sm:max-w-[72%]">
+                          <div className="bubble-comic-mine">
+                            {isFile ? (
+                              <div className="space-y-2 min-w-[200px] sm:min-w-[230px]">
+                                <div className="flex items-start gap-2.5">
+                                  <div className="p-2 rounded-xl bg-black/5 border border-black text-black shrink-0">
+                                    {msg.status === 'completed' ? (
+                                      <FileText className="w-4.5 h-4.5" />
+                                    ) : (
+                                      <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                                    )}
+                                  </div>
+
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs sm:text-sm font-bold text-black truncate" title={msg.fileName}>
+                                      {msg.fileName}
+                                    </p>
+                                    <span className="text-[10px] text-black/70 font-mono font-semibold">
+                                      {formatFileSize(msg.fileSize)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {msg.status === 'transferring' ? (
+                                  <div className="space-y-1 pt-1">
+                                    <div className="w-full h-2 rounded-full overflow-hidden bg-black/15 border border-black/30">
+                                      <div
+                                        className="h-full transition-all duration-150 bg-black"
+                                        style={{ width: `${msg.progress || 0}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                ) : msg.status === 'completed' && msg.blobUrl ? (
+                                  <div className="pt-1">
+                                    <a
+                                      href={msg.blobUrl}
+                                      download={msg.fileName}
+                                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#CEF97A] border-2 border-black text-black hover:bg-[#B9F06A] transition-all shadow-xs"
+                                    >
+                                      <Download className="w-3 h-3" />
+                                      <span>Download</span>
+                                    </a>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <p className="text-[15px] sm:text-[16px] leading-relaxed font-medium whitespace-pre-wrap text-black">
+                                {msg.text}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Heart Read Receipt Badge on most recent sent bubble */}
+                          {isMostRecentSent && (
+                            <div 
+                              className="absolute -bottom-2 -right-1.5 bg-white border-2 border-black rounded-full w-5 h-5 flex items-center justify-center shadow-xs animate-heart-pop"
+                              title="Delivered"
+                            >
+                              <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-
-                    {/* Speech Bubble Container */}
-                    <div
-                      className={`relative px-4 py-2.5 sm:px-4.5 sm:py-3 rounded-[18px] max-w-[82%] sm:max-w-[72%] shadow-xs transition-all ${
-                        isMe
-                          ? 'bg-sage-600 text-white rounded-br-[3px]'
-                          : 'bg-white text-slate-900 border border-slate-200/90 rounded-bl-[3px]'
-                      }`}
-                    >
-                      {/* Left Pointer Tail for Peer */}
-                      {!isMe && (
-                        <svg
-                          className="absolute -left-1.5 bottom-0 w-2.5 h-3.5 pointer-events-none"
-                          viewBox="0 0 10 14"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
+                    );
+                  } else {
+                    // INCOMING (PEER) MESSAGE: Avatar on left, name above, lime bubble, timestamp on right
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex items-start gap-2.5 animate-bubble-pop ${
+                          remainingSecs <= 2 ? 'opacity-40 transition-opacity' : 'opacity-100'
+                        }`}
+                      >
+                        {/* Peer Avatar */}
+                        <div 
+                          className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full border-2 border-black bg-[#CEF97A] text-black font-extrabold text-xs flex items-center justify-center font-mono select-none shadow-xs shrink-0 mt-4"
+                          title={verifiedPeer?.fingerprint || 'Peer'}
                         >
-                          <path
-                            d="M10 0 C10 6 7 14 0 14 C4.5 14 10 10.5 10 6.5 Z"
-                            fill="#ffffff"
-                          />
-                          <path
-                            d="M10 0 C10 6 7 14 0 14"
-                            stroke="#e2e8f0"
-                            strokeWidth="1"
-                          />
-                        </svg>
-                      )}
+                          {peerInitials}
+                        </div>
 
-                      {/* Right Pointer Tail for Me */}
-                      {isMe && (
-                        <svg
-                          className="absolute -right-1.5 bottom-0 w-2.5 h-3.5 pointer-events-none"
-                          viewBox="0 0 10 14"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="M0 0 C0 6 3 14 10 14 C5.5 14 0 10.5 0 6.5 Z"
-                            fill="#5a846a"
-                          />
-                        </svg>
-                      )}
+                        {/* Peer Message Stack */}
+                        <div className="flex flex-col items-start max-w-[78%] sm:max-w-[72%]">
+                          {/* Peer Name Tag */}
+                          <span className="text-xs font-bold text-black ml-1 mb-0.5 select-none">
+                            {peerDisplayName}
+                          </span>
 
-                      {/* Content: File or Text */}
-                      {isFile ? (
-                        /* File Message inside unified speech bubble */
-                        <div className="space-y-2 min-w-[200px] sm:min-w-[240px]">
-                          <div className="flex items-start gap-2.5">
-                            <div className={`p-2 rounded-xl shrink-0 ${
-                              isMe ? 'bg-white/20 text-white' : 'bg-slate-100 border border-slate-200 text-slate-700'
-                            }`}>
-                              {msg.status === 'completed' ? (
-                                <FileText className="w-4.5 h-4.5" />
+                          <div className="flex items-end gap-2">
+                            {/* Lime Peer Bubble */}
+                            <div className="bubble-comic-peer">
+                              {isFile ? (
+                                <div className="space-y-2 min-w-[200px] sm:min-w-[230px]">
+                                  <div className="flex items-start gap-2.5">
+                                    <div className="p-2 rounded-xl bg-white border border-black text-black shrink-0">
+                                      {msg.status === 'completed' ? (
+                                        <FileText className="w-4.5 h-4.5" />
+                                      ) : (
+                                        <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                                      )}
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs sm:text-sm font-bold text-black truncate" title={msg.fileName}>
+                                        {msg.fileName}
+                                      </p>
+                                      <span className="text-[10px] text-black/70 font-mono font-semibold">
+                                        {formatFileSize(msg.fileSize)}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {msg.status === 'transferring' ? (
+                                    <div className="space-y-1 pt-1">
+                                      <div className="w-full h-2 rounded-full overflow-hidden bg-black/15 border border-black/30">
+                                        <div
+                                          className="h-full transition-all duration-150 bg-black"
+                                          style={{ width: `${msg.progress || 0}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  ) : msg.status === 'completed' && msg.blobUrl ? (
+                                    <div className="pt-1">
+                                      <a
+                                        href={msg.blobUrl}
+                                        download={msg.fileName}
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-white border-2 border-black text-black hover:bg-slate-100 transition-all shadow-xs"
+                                      >
+                                        <Download className="w-3 h-3" />
+                                        <span>Download</span>
+                                      </a>
+                                    </div>
+                                  ) : null}
+                                </div>
                               ) : (
-                                <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                                <p className="text-[15px] sm:text-[16px] leading-relaxed font-medium whitespace-pre-wrap text-black">
+                                  {msg.text}
+                                </p>
                               )}
                             </div>
 
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold truncate" title={msg.fileName}>
-                                {msg.fileName}
-                              </p>
-                              <span className={`text-[10px] ${isMe ? 'text-sage-100' : 'text-slate-500'}`}>
-                                {formatFileSize(msg.fileSize)}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Transfer progress or Download Button */}
-                          {msg.status === 'transferring' ? (
-                            <div className="space-y-1 pt-1">
-                              <div className={`w-full h-1.5 rounded-full overflow-hidden ${isMe ? 'bg-black/20' : 'bg-slate-200'}`}>
-                                <div
-                                  className={`h-full transition-all duration-150 ${isMe ? 'bg-white' : 'bg-sage-500'}`}
-                                  style={{ width: `${msg.progress || 0}%` }}
-                                />
+                            {/* Outside Right: Timestamp + Translation icon + Burn countdown */}
+                            <div className="flex flex-col items-start gap-0.5 select-none pb-1 shrink-0">
+                              {isBurn && (
+                                <span className="inline-flex items-center gap-0.5 font-bold text-[10px] text-amber-900 bg-amber-200/90 border border-amber-500 px-1.5 py-0.2 rounded-full mb-0.5 shadow-xs">
+                                  <Flame className="w-2.5 h-2.5 text-amber-900" />
+                                  <span>{remainingSecs}s</span>
+                                </span>
+                              )}
+                              <div className="flex items-center gap-1 text-[11px] font-bold text-black/75 font-mono">
+                                <span>{timeStr}</span>
+                                <Languages className="w-3 h-3 text-black/60" />
                               </div>
                             </div>
-                          ) : msg.status === 'completed' && msg.blobUrl ? (
-                            <div className="pt-1">
-                              <a
-                                href={msg.blobUrl}
-                                download={msg.fileName}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                                  isMe
-                                    ? 'bg-white text-sage-800 hover:bg-slate-100 shadow-xs'
-                                    : 'bg-sage-600 text-white hover:bg-sage-700 shadow-xs'
-                                }`}
-                              >
-                                <Download className="w-3 h-3" />
-                                <span>Download</span>
-                              </a>
-                            </div>
-                          ) : null}
+                          </div>
                         </div>
-                      ) : (
-                        /* Text Message */
-                        <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
-                          {msg.text}
-                        </p>
-                      )}
-
-                      {/* Subtle Timestamp and Burn Countdown Info */}
-                      <div className={`flex items-center justify-end gap-1.5 text-[10px] mt-1 ${
-                        isMe ? 'text-sage-200' : 'text-slate-400'
-                      }`}>
-                        {timeStr && <span>{timeStr}</span>}
-                        {timeStr && (isBurn || remainingSecs < DEFAULT_TTL_SECONDS) && <span>•</span>}
-                        {isBurn ? (
-                          <span className={`inline-flex items-center gap-0.5 font-medium ${
-                            isMe ? 'text-amber-200' : 'text-amber-600'
-                          }`}>
-                            <Flame className="w-2.5 h-2.5" />
-                            <span>{remainingSecs}s</span>
-                          </span>
-                        ) : remainingSecs < DEFAULT_TTL_SECONDS ? (
-                          <span>{remainingSecs}s</span>
-                        ) : null}
                       </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Staged File Preview Bar */}
-          {attachedFile && (
-            <div className="px-4 py-2 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between gap-3 text-xs animate-slide-up">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 shrink-0">
-                  <File className="w-3.5 h-3.5" />
-                </div>
-                <span className="font-medium text-slate-800 truncate max-w-[180px] sm:max-w-xs">{attachedFile.name}</span>
-                <span className="text-slate-400 shrink-0">({formatFileSize(attachedFile.size)})</span>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setFileBurnOnRead(!fileBurnOnRead)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] flex items-center gap-1 border transition-colors ${
-                    fileBurnOnRead
-                      ? 'bg-amber-50 border-amber-200 text-amber-700'
-                      : 'bg-white border-slate-200 text-slate-500'
-                  }`}
-                  title="Burn file on view"
-                >
-                  <Flame className="w-2.5 h-2.5" />
-                  <span>Burn</span>
-                </button>
-
-                <button
-                  onClick={() => setAttachedFile(null)}
-                  className="p-1 text-slate-400 hover:text-slate-600"
-                  title="Cancel attachment"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-
-                <button
-                  onClick={handleSendAttachedFile}
-                  disabled={isSendingFile}
-                  className="btn-primary text-xs py-1 px-2.5 flex items-center gap-1 rounded-full"
-                >
-                  {isSendingFile ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                  <span>Send</span>
-                </button>
-              </div>
+                    );
+                  }
+                })
+              )}
+              <div ref={messagesEndRef} />
             </div>
-          )}
 
-          {/* Clean Rounded Pill Input Bar */}
-          <div className="p-3 bg-white border-t border-slate-200/80 shrink-0">
-            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-              <div className="chat-input-pill flex-1 flex items-center gap-1.5 px-2 py-1">
-                {/* Paperclip File Attachment Button */}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors shrink-0"
-                  title="Attach File (Encrypted P2P)"
-                >
-                  <Paperclip className="w-4 h-4" />
-                </button>
+            {/* Staged File Preview Bar */}
+            {attachedFile && (
+              <div className="px-4 py-2.5 bg-white border-t-2 border-black flex items-center justify-between gap-3 text-xs animate-slide-up">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-full border-2 border-black bg-[#CEF97A] flex items-center justify-center text-black shrink-0">
+                    <File className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-bold text-black truncate max-w-[180px] sm:max-w-xs">{attachedFile.name}</span>
+                  <span className="text-black/70 shrink-0 font-mono font-semibold">({formatFileSize(attachedFile.size)})</span>
+                </div>
 
-                {/* Burn On Read Flame Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setBurnOnReadEnabled(!burnOnReadEnabled)}
-                  className={`p-1.5 rounded-full transition-colors shrink-0 ${
-                    burnOnReadEnabled
-                      ? 'bg-amber-100 text-amber-600'
-                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200/60'
-                  }`}
-                  title="Burn on Read: Message self-destructs 5s after viewing"
-                >
-                  <Flame className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setFileBurnOnRead(!fileBurnOnRead)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 border-2 border-black transition-colors cursor-pointer ${
+                      fileBurnOnRead
+                        ? 'bg-[#FFD479] text-black shadow-xs'
+                        : 'bg-white text-black hover:bg-slate-100'
+                    }`}
+                    title="Burn file on read"
+                  >
+                    <Flame className="w-3 h-3" />
+                    <span>Burn</span>
+                  </button>
 
-                {/* Input Text Field */}
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Type an encrypted message..."
-                  className="flex-1 bg-transparent border-none outline-none text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 px-1 py-1"
-                />
+                  <button
+                    type="button"
+                    onClick={() => setAttachedFile(null)}
+                    className="w-7 h-7 rounded-full border-2 border-black bg-white hover:bg-slate-100 text-black flex items-center justify-center cursor-pointer"
+                    title="Cancel attachment"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSendAttachedFile}
+                    disabled={isSendingFile}
+                    className="px-3.5 py-1 rounded-full border-2 border-black bg-[#CEF97A] hover:bg-[#B9F06A] text-black font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-40"
+                  >
+                    {isSendingFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    <span>Send</span>
+                  </button>
+                </div>
               </div>
+            )}
 
-              {/* Circular Send Action Button */}
-              <button
-                type="submit"
-                disabled={!inputText.trim()}
-                className="w-9 h-9 rounded-full bg-sage-600 hover:bg-sage-700 text-white flex items-center justify-center shrink-0 shadow-xs transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-sage-600 cursor-pointer"
-                title="Send encrypted message"
-              >
-                <Send className="w-4 h-4 ml-0.5" />
-              </button>
-            </form>
+            {/* FOOTER (Exact Reference: Yellow bar, White rounded pill input with 2px black border, photo/attach on left, flame burn-toggle, green paper-plane on right) */}
+            <div className="p-3.5 sm:p-4 bg-[#F8F34E] border-t-2 border-black shrink-0">
+              <form onSubmit={handleSendMessage} className="flex items-center">
+                {/* White Pill Input Container with 2px Black Border */}
+                <div className="w-full bg-white border-2 border-black rounded-full px-3.5 py-1.5 flex items-center gap-2.5 shadow-md">
+                  {/* Photo/Camera Attach Icon */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-1 rounded-full hover:bg-slate-100 text-black transition-colors shrink-0 cursor-pointer"
+                    title="Attach File or Photo (Encrypted P2P)"
+                    aria-label="Attach file"
+                  >
+                    <Camera className="w-5 h-5 stroke-[2.2] text-black hover:text-emerald-700" />
+                  </button>
+
+                  {/* Text Input */}
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder="Enter a message."
+                    className="flex-1 bg-transparent border-none outline-none text-[15px] sm:text-[16px] font-medium text-black placeholder:text-stone-400 py-1"
+                  />
+
+                  {/* Burn-on-Read Flame Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setBurnOnReadEnabled(!burnOnReadEnabled)}
+                    className={`p-1.5 rounded-full border transition-all shrink-0 cursor-pointer ${
+                      burnOnReadEnabled
+                        ? 'bg-amber-300 border-black text-black shadow-xs'
+                        : 'border-transparent text-black/50 hover:text-black hover:bg-slate-100'
+                    }`}
+                    title={burnOnReadEnabled ? 'Burn on Read: Active (5s)' : 'Turn on Burn-on-Read'}
+                    aria-label="Toggle burn on read"
+                  >
+                    <Flame className={`w-4 h-4 ${burnOnReadEnabled ? 'fill-black text-black' : ''}`} />
+                  </button>
+
+                  {/* Green Paper-Plane Send Button */}
+                  <button
+                    type="submit"
+                    disabled={!inputText.trim()}
+                    className="chat-comic-send-btn p-1 shrink-0"
+                    title="Send message"
+                    aria-label="Send message"
+                  >
+                    <Send className="w-6 h-6 text-[#16A34A] fill-[#DCFCE7] hover:fill-[#86EFAC] stroke-[2.2] transition-colors" />
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

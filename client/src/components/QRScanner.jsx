@@ -174,14 +174,14 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
       <div id="file-qr-temp-reader" style={{ display: 'none' }} />
 
       {!scannedPeer ? (
-        <div className="glass-panel p-6 sm:p-8 space-y-5 bg-white">
+        <div className="glass-panel p-6 sm:p-8 space-y-5 bg-[#1C1C1C] border-[#A8CC19]/40">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Camera className="w-4 h-4 text-slate-700" />
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Camera className="w-4 h-4 text-[#D4FF27]" />
                 Scan Peer Identity
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Scan another user's Covert Chatter QR code to authenticate cryptographic keys.
               </p>
             </div>
@@ -200,7 +200,7 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
                 disabled={isProcessingFile}
                 className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
               >
-                <FileImage className="w-3.5 h-3.5 text-slate-600" />
+                <FileImage className="w-3.5 h-3.5 text-[#A8CC19]" />
                 <span>{isProcessingFile ? 'Reading...' : 'Upload Image'}</span>
               </button>
 
@@ -225,12 +225,12 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
           </div>
 
           {/* Viewfinder Container */}
-          <div className="relative rounded-xl overflow-hidden bg-slate-950 min-h-[300px] flex items-center justify-center">
+          <div className="relative rounded-2xl overflow-hidden bg-black min-h-[300px] flex items-center justify-center border border-[#A8CC19]/40">
             <div id={scannerContainerId} className="w-full max-w-sm overflow-hidden rounded-xl" />
 
             {!isScanning && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-900/90 gap-3">
-                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white">
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-black/90 gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#1C1C1C] border border-[#D4FF27] flex items-center justify-center text-[#D4FF27] shadow-[0_0_12px_rgba(212,255,39,0.25)]">
                   <Camera className="w-6 h-6" />
                 </div>
                 <p className="text-xs text-slate-300">
@@ -241,28 +241,28 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
           </div>
 
           {cameraError && (
-            <p className="text-xs text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-200">
+            <p className="text-xs text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/30">
               {cameraError}
             </p>
           )}
 
           {validationError && (
-            <p className="text-xs text-amber-700 bg-amber-50 p-3 rounded-xl border border-amber-200">
+            <p className="text-xs text-amber-400 bg-amber-500/10 p-3 rounded-xl border border-amber-500/30">
               {validationError}
             </p>
           )}
         </div>
       ) : (
         /* Scanned Peer Verification Card */
-        <div className="glass-panel p-6 sm:p-8 space-y-5 bg-white border-sage-200">
+        <div className="glass-panel p-6 sm:p-8 space-y-5 bg-[#1C1C1C] border-[#A8CC19]/50">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-sage-50 border border-sage-200 rounded-xl text-sage-600">
+              <div className="p-2.5 bg-[#121212] border border-[#D4FF27] rounded-xl text-[#D4FF27] shadow-[0_0_10px_rgba(212,255,39,0.2)]">
                 <UserCheck className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">Peer Identity Authenticated</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <h3 className="text-base font-bold text-white">Peer Identity Authenticated</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
                   Verified NIST P-256 ECDSA & ECDH parameters.
                 </p>
               </div>
@@ -271,7 +271,7 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
             <div className="flex items-center gap-2">
               <button
                 onClick={handleConnectWithPeer}
-                className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5"
+                className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>Connect</span>
@@ -281,7 +281,7 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
                 onClick={handleResetScan}
                 className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-3.5 h-3.5 text-[#A8CC19]" />
                 <span>Scan Another</span>
               </button>
             </div>
@@ -289,19 +289,19 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
 
           {/* Verified Fingerprint Display */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Peer SHA-256 Fingerprint
             </label>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 relative group">
-              <div className="font-mono text-slate-800 font-semibold text-xs sm:text-sm tracking-wider break-all select-all">
+            <div className="bg-[#121212] border border-[#A8CC19]/50 rounded-xl p-3 relative group">
+              <div className="font-mono text-[#D4FF27] font-semibold text-xs sm:text-sm tracking-wider break-all select-all">
                 {scannedPeer.fingerprint}
               </div>
               <button
                 onClick={handleCopyPeerFingerprint}
-                className="absolute right-2.5 top-2.5 p-1 rounded-md bg-white border border-slate-200 text-slate-500 hover:text-slate-900 shadow-xs"
+                className="absolute right-2.5 top-2.5 p-1 rounded-md bg-[#1C1C1C] border border-[#A8CC19]/50 text-slate-300 hover:text-[#D4FF27] shadow-xs"
                 title="Copy Fingerprint"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-sage-600" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-[#D4FF27]" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
           </div>

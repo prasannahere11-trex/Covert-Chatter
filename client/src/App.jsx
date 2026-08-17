@@ -77,7 +77,7 @@ export default function App() {
   }, [showKeyDetailsModal]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-offwhite text-slate-800 selection:bg-sage-100 selection:text-sage-700">
+    <div className="min-h-screen flex flex-col bg-[#121212] text-white selection:bg-[#D4FF27] selection:text-[#121212]">
       {/* Toast Notification Container */}
       {toast && (
         <Toast
@@ -89,28 +89,28 @@ export default function App() {
         />
       )}
 
-      {/* Top Header Navigation — Thin, unobtrusive branded header bar */}
-      <header className="glass-nav sticky top-0 z-40 px-4 sm:px-6 py-2.5">
+      {/* Top Header Navigation — Charcoal with thin Olive Shadow accent border */}
+      <header className="glass-nav sticky top-0 z-40 px-4 sm:px-6 py-3 border-b border-[#A8CC19]/40 bg-[#1C1C1C]/95">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           {/* Circular Shield Logo & App Name */}
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-sage-50 border border-sage-200/90 flex items-center justify-center text-sage-600 shadow-xs">
+            <div className="w-8 h-8 rounded-full bg-[#121212] border border-[#D4FF27] flex items-center justify-center text-[#D4FF27] shadow-[0_0_10px_rgba(212,255,39,0.25)]">
               <Shield className="w-4 h-4" />
             </div>
-            <span className="text-sm sm:text-base font-bold tracking-tight text-slate-900">
+            <span className="text-sm sm:text-base font-bold tracking-tight text-white">
               Covert Chatter
             </span>
           </div>
 
-          {/* Connection Status Pill Badge */}
+          {/* Connection Status Pill Badge with Neon Glow */}
           <div className="flex items-center gap-2">
             {identity && !fatalError && (
-              <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-400 mr-1 font-mono">
+              <div className="hidden md:flex items-center gap-1.5 text-[11px] text-[#9E9E9E] mr-1 font-mono">
                 <span>ID: {identity.fingerprint.slice(0, 6)}...</span>
               </div>
             )}
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-sage-50 text-sage-700 border border-sage-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-sage-500 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#1C1C1C] text-[#D4FF27] border border-[#D4FF27] shadow-[0_0_12px_rgba(212,255,39,0.25)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#D4FF27] animate-pulse" />
               <span>{verifiedPeer ? 'Connected' : 'Encrypted'}</span>
             </span>
           </div>
@@ -121,12 +121,12 @@ export default function App() {
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-6 space-y-6">
         {/* Fatal Error State: Browser Incompatibility */}
         {fatalError ? (
-          <div className="glass-panel p-8 rounded-2xl space-y-4 text-center max-w-xl mx-auto mt-12 animate-fade-in border-rose-200 bg-white">
-            <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mx-auto">
+          <div className="glass-panel p-8 rounded-2xl space-y-4 text-center max-w-xl mx-auto mt-12 animate-fade-in border-rose-500/50 bg-[#1C1C1C]">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-500 mx-auto">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <h2 className="text-lg font-bold text-slate-900">Secure Storage Unavailable</h2>
-            <p className="text-sm text-slate-600 leading-relaxed">{fatalError}</p>
+            <h2 className="text-lg font-bold text-white">Secure Storage Unavailable</h2>
+            <p className="text-sm text-slate-300 leading-relaxed">{fatalError}</p>
             <div className="pt-2">
               <button
                 onClick={loadIdentity}
@@ -139,42 +139,42 @@ export default function App() {
           </div>
         ) : isLoading ? (
           /* Loading State */
-          <div className="glass-panel p-12 rounded-2xl text-center max-w-md mx-auto my-12 space-y-3 animate-pulse bg-white">
-            <div className="w-10 h-10 rounded-xl bg-sage-50 border border-sage-200 flex items-center justify-center text-sage-600 mx-auto">
+          <div className="glass-panel p-12 rounded-2xl text-center max-w-md mx-auto my-12 space-y-3 animate-pulse bg-[#1C1C1C] border-[#A8CC19]/30">
+            <div className="w-10 h-10 rounded-xl bg-[#121212] border border-[#D4FF27] flex items-center justify-center text-[#D4FF27] mx-auto shadow-[0_0_12px_rgba(212,255,39,0.25)]">
               <RefreshCw className="w-5 h-5 animate-spin" />
             </div>
-            <h3 className="text-sm font-semibold text-slate-800">Initializing Keystore</h3>
-            <p className="text-xs text-slate-500">Loading non-extractable cryptographic keypairs...</p>
+            <h3 className="text-sm font-semibold text-white">Initializing Keystore</h3>
+            <p className="text-xs text-slate-400">Loading non-extractable cryptographic keypairs...</p>
           </div>
         ) : (
           <>
             {/* Streamlined Segmented Control Navigation */}
             <div className="flex items-center justify-center">
               <nav
-                className="inline-flex p-1 bg-slate-100 border border-slate-200 rounded-xl max-w-full"
+                className="inline-flex p-1.5 bg-[#1C1C1C] border border-[#A8CC19]/40 rounded-2xl max-w-full shadow-lg"
                 aria-label="Navigation Tabs"
               >
                 <button
                   onClick={() => setActiveTab('connect')}
-                  className={`flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-150 ${
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
                     activeTab === 'connect'
-                      ? 'bg-white text-slate-900 shadow-sm font-semibold'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-[#D4FF27] text-[#121212] shadow-[0_0_14px_rgba(212,255,39,0.35)]'
+                      : 'text-slate-300 hover:text-white hover:bg-[#242424]'
                   }`}
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
+                  <MessageSquare className="w-4 h-4" />
                   <span>Chat & Pair</span>
                 </button>
 
                 <button
                   onClick={() => setActiveTab('my-identity')}
-                  className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-150 ${
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
                     activeTab === 'my-identity'
-                      ? 'bg-white text-slate-900 shadow-sm font-semibold'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-[#D4FF27] text-[#121212] shadow-[0_0_14px_rgba(212,255,39,0.35)]'
+                      : 'text-slate-300 hover:text-white hover:bg-[#242424]'
                   }`}
                 >
-                  <QrCode className="w-3.5 h-3.5" />
+                  <QrCode className="w-4 h-4" />
                   <span>My Identity</span>
                 </button>
               </nav>
@@ -204,19 +204,19 @@ export default function App() {
       </main>
 
       {/* Footer Area with Tagline and Subtle Security Details Link */}
-      <footer className="py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-auto px-4">
+      <footer className="py-6 text-center text-xs text-slate-400 border-t border-[#A8CC19]/25 mt-auto px-4 bg-[#121212]">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3">
           <p>
             Covert Chatter • End-to-End Encrypted (AES-256-GCM) • Ephemeral Volatile Memory
           </p>
-          <span className="hidden sm:inline text-slate-300">•</span>
+          <span className="hidden sm:inline text-slate-600">•</span>
           <button
             type="button"
             onClick={() => setShowKeyDetailsModal(true)}
-            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors py-1.5 px-2.5 rounded hover:bg-slate-100 touch-manipulation focus:outline-none focus-visible:ring-1 focus-visible:ring-sage-400"
+            className="inline-flex items-center gap-1.5 text-xs text-[#A8CC19] hover:text-[#D4FF27] transition-colors py-1.5 px-3 rounded-lg hover:bg-[#1C1C1C] touch-manipulation focus:outline-none focus-visible:ring-1 focus-visible:ring-[#D4FF27]"
             title="View cryptographic key details and security architecture"
           >
-            <Lock className="w-3 h-3 text-slate-400" />
+            <Lock className="w-3 h-3 text-[#A8CC19]" />
             <span>Security details</span>
           </button>
         </div>
@@ -225,7 +225,7 @@ export default function App() {
       {/* Key Details Modal Overlay */}
       {showKeyDetailsModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowKeyDetailsModal(false);
@@ -235,18 +235,18 @@ export default function App() {
           aria-modal="true"
           aria-labelledby="key-details-title"
         >
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
+          <div className="bg-[#1C1C1C] rounded-2xl border border-[#A8CC19]/50 shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-sage-50 border border-sage-200 rounded-lg text-sage-600">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#A8CC19]/30 bg-[#181818]">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-[#121212] border border-[#D4FF27] rounded-xl text-[#D4FF27] shadow-[0_0_10px_rgba(212,255,39,0.2)]">
                   <Lock className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 id="key-details-title" className="text-sm font-bold text-slate-900">
+                  <h3 id="key-details-title" className="text-sm font-bold text-white">
                     Security & Key Details
                   </h3>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-slate-400">
                     Cryptographic identities and sandboxed keystore architecture
                   </p>
                 </div>
@@ -254,7 +254,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowKeyDetailsModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-[#242424] rounded-lg transition-colors"
                 aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
@@ -262,7 +262,7 @@ export default function App() {
             </div>
 
             {/* Modal Scrollable Content */}
-            <div className="overflow-y-auto p-4 sm:p-6 space-y-4">
+            <div className="overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#121212]">
               <KeyDetails identity={identity} onShowToast={showToast} />
             </div>
           </div>
