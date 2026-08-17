@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   Shield, 
   QrCode, 
-  KeyRound, 
   AlertTriangle,
   RefreshCw,
   Fingerprint,
   Lock,
-  MessageSquare
+  MessageSquare,
+  X
 } from 'lucide-react';
 import MyIdentity from './components/MyIdentity';
 import KeyDetails from './components/KeyDetails';
@@ -16,7 +16,8 @@ import Toast from './components/Toast';
 import { getOrCreateIdentity, resetIdentity } from './utils/db';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('connect'); // 'connect' | 'my-identity' | 'key-details'
+  const [activeTab, setActiveTab] = useState('connect'); // 'connect' | 'my-identity'
+  const [showKeyDetailsModal, setShowKeyDetailsModal] = useState(false);
   const [identity, setIdentity] = useState(null);
   const [verifiedPeer, setVerifiedPeer] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,6 +63,18 @@ export default function App() {
   useEffect(() => {
     loadIdentity();
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowKeyDetailsModal(false);
+      }
+    };
+    if (showKeyDetailsModal) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showKeyDetailsModal]);
 
   return (
     <div className="min-h-screen flex flex-col bg-offwhite text-slate-800 selection:bg-sage-100 selection:text-sage-700">
@@ -182,18 +195,6 @@ export default function App() {
                   <QrCode className="w-3.5 h-3.5" />
                   <span>My Identity</span>
                 </button>
-
-                <button
-                  onClick={() => setActiveTab('key-details')}
-                  className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-150 ${
-                    activeTab === 'key-details'
-                      ? 'bg-white text-slate-900 shadow-sm font-semibold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span>Key Details</span>
-                </button>
               </nav>
             </div>
 
@@ -215,21 +216,76 @@ export default function App() {
                   onShowToast={showToast}
                 />
               )}
-
-              {activeTab === 'key-details' && (
-                <KeyDetails identity={identity} onShowToast={showToast} />
-              )}
             </div>
           </>
         )}
       </main>
 
-      {/* Footer Note */}
-      <footer className="py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-auto">
-        <p>
-          Covert Chatter • End-to-End Encrypted (AES-256-GCM) • Ephemeral Volatile Memory
-        </p>
+      {/* Footer Area with Tagline and Subtle Security Details Link */}
+      <footer className="py-6 text-center text-xs text-slate-400 border-t border-slate-200 mt-auto px-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3">
+          <p>
+            Covert Chatter • End-to-End Encrypted (AES-256-GCM) • Ephemeral Volatile Memory
+          </p>
+          <span className="hidden sm:inline text-slate-300">•</span>
+          <button
+            type="button"
+            onClick={() => setShowKeyDetailsModal(true)}
+            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors py-1.5 px-2.5 rounded hover:bg-slate-100 touch-manipulation focus:outline-none focus-visible:ring-1 focus-visible:ring-sage-400"
+            title="View cryptographic key details and security architecture"
+          >
+            <Lock className="w-3 h-3 text-slate-400" />
+            <span>Security details</span>
+          </button>
+        </div>
       </footer>
+
+      {/* Key Details Modal Overlay */}
+      {showKeyDetailsModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowKeyDetailsModal(false);
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="key-details-title"
+        >
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-sage-50 border border-sage-200 rounded-lg text-sage-600">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 id="key-details-title" className="text-sm font-bold text-slate-900">
+                    Security & Key Details
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Cryptographic identities and sandboxed keystore architecture
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowKeyDetailsModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Content */}
+            <div className="overflow-y-auto p-4 sm:p-6 space-y-4">
+              <KeyDetails identity={identity} onShowToast={showToast} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
