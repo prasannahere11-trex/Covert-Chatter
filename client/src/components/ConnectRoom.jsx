@@ -702,14 +702,21 @@ export default function ConnectRoom({
             </div>
           </div>
 
-          {/* Minimal Fallback Trigger */}
-          <div className="text-center pt-1">
+          {/* Secondary Outlined Fallback Button */}
+          <div className="flex flex-col items-center justify-center pt-2 sm:pt-4">
             <button
+              type="button"
               onClick={() => setShowManualPeerInput(!showManualPeerInput)}
-              className="text-xs text-slate-400 hover:text-slate-600 inline-flex items-center gap-1 transition-colors"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-xs sm:text-sm font-medium shadow-xs transition-all active:scale-[0.98] touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-400"
+              aria-expanded={showManualPeerInput}
             >
-              <FileCode className="w-3.5 h-3.5" />
+              <FileCode className="w-4 h-4 text-slate-500" />
               <span>Enter room code or paste JSON manually</span>
+              {showManualPeerInput ? (
+                <ChevronUp className="w-4 h-4 text-slate-400 ml-0.5" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-400 ml-0.5" />
+              )}
             </button>
           </div>
 
@@ -920,7 +927,7 @@ export default function ConnectRoom({
       )}
 
       {/* ========================================================================= */}
-      {/* 5. CONNECTED CHAT SCREEN (Clean Messenger Style)                         */}
+      {/* 5. CONNECTED CHAT SCREEN (Clean Speech-Bubble Messenger Style)            */}
       {/* ========================================================================= */}
       {status === 'connected' && (
         <div 
@@ -928,7 +935,7 @@ export default function ConnectRoom({
           onDragEnter={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`glass-panel overflow-hidden flex flex-col h-[650px] relative transition-all ${
+          className={`glass-panel overflow-hidden flex flex-col h-[650px] relative transition-all bg-white border border-slate-200/90 shadow-sm ${
             isDraggingOver ? 'ring-2 ring-sage-500 bg-sage-50/20' : ''
           }`}
         >
@@ -942,51 +949,55 @@ export default function ConnectRoom({
 
           {/* Drag Overlay */}
           {isDraggingOver && (
-            <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm border-2 border-dashed border-sage-500 rounded-2xl flex flex-col items-center justify-center p-6 space-y-2 pointer-events-none">
+            <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm border-2 border-dashed border-sage-500 rounded-2xl flex flex-col items-center justify-center p-6 space-y-2 pointer-events-none animate-fade-in">
               <UploadCloud className="w-10 h-10 text-sage-600 animate-bounce" />
               <h3 className="text-sm font-bold text-slate-900">Drop file to send</h3>
               <p className="text-xs text-slate-500">Encrypted in 16KB blocks (Up to 25MB)</p>
             </div>
           )}
 
-          {/* Clean Chat Header */}
-          <div className="px-4 py-3 bg-white border-b border-slate-200 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-2.5 h-2.5 rounded-full bg-sage-500 shrink-0" />
+          {/* Thin, Unobtrusive Chat Header Bar */}
+          <div className="px-4 py-2.5 bg-white border-b border-slate-200/80 flex items-center justify-between gap-3 shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* Peer Avatar */}
+              <div className="avatar-badge bg-sage-50 border border-sage-200 text-sage-700 font-mono shadow-xs">
+                {verifiedPeer?.fingerprint ? verifiedPeer.fingerprint.slice(0, 2).toUpperCase() : 'P'}
+              </div>
+
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-bold text-slate-900 truncate">
-                    {verifiedPeer?.fingerprint ? `${verifiedPeer.fingerprint.slice(0, 10)}...` : 'Peer'}
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                    {verifiedPeer?.fingerprint ? `Peer ${verifiedPeer.fingerprint.slice(0, 8)}` : 'Secure Peer'}
                   </span>
 
                   {/* Single Clean Encrypted Badge with Popover Detail */}
                   <button
                     onClick={() => setShowSecurityModal(true)}
-                    className="badge-sage text-[11px] hover:bg-sage-100 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-sage-50 text-sage-700 border border-sage-200 hover:bg-sage-100 transition-colors cursor-pointer"
                     title="Click for security & encryption details"
                   >
-                    <Lock className="w-3 h-3" />
+                    <Lock className="w-2.5 h-2.5 text-sage-600" />
                     <span>Encrypted</span>
                   </button>
 
                   {/* Subtle Connection Quality Pill */}
                   {connectionType && (
-                    <span className="badge-neutral text-[10px] py-0.5 px-2">
+                    <span className="badge-neutral text-[10px] py-0.2 px-1.5">
                       {connectionType === 'direct' ? '⚡ Direct' : '🖥️ Relay'}
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-400 truncate">Room: {roomCode}</p>
+                <p className="text-[10px] text-slate-400 truncate">Room: {roomCode}</p>
               </div>
             </div>
 
             <button
               onClick={handleDisconnect}
-              className="btn-secondary text-xs py-1.5 px-3 text-slate-600 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 shrink-0"
+              className="btn-secondary text-xs py-1 px-2.5 text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 shrink-0 transition-colors flex items-center gap-1"
               title="Leave room"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline ml-1">Leave</span>
+              <span className="hidden sm:inline">Leave</span>
             </button>
           </div>
 
@@ -1036,14 +1047,16 @@ export default function ConnectRoom({
             </div>
           )}
 
-          {/* Clean Message Stream */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-slate-50/50">
+          {/* Main Chat Stream with Speech Bubbles and Avatar Placeholders */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#f8faf9]">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-2">
-                <Sparkles className="w-6 h-6 text-sage-600" />
-                <p className="text-xs font-medium text-slate-600">Direct encrypted session started</p>
-                <p className="text-[11px] text-slate-400 max-w-xs">
-                  Send a message or attach a file. Messages vanish when the session ends.
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-2.5">
+                <div className="w-10 h-10 rounded-full bg-sage-50 border border-sage-200 flex items-center justify-center text-sage-600">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <p className="text-xs font-semibold text-slate-700">Encrypted session active</p>
+                <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed">
+                  Speech bubbles are end-to-end encrypted with AES-256-GCM. Messages self-destruct when closed.
                 </p>
               </div>
             ) : (
@@ -1052,88 +1065,149 @@ export default function ConnectRoom({
                 const remainingSecs = getRemainingSeconds(msg, currentTime);
                 const isBurn = msg.burnOnRead;
                 const isFile = msg.type === 'file';
+                const peerInitial = verifiedPeer?.fingerprint ? verifiedPeer.fingerprint.slice(0, 2).toUpperCase() : 'P';
+                const timeStr = msg.timestamp
+                  ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : '';
 
                 return (
                   <div
                     key={msg.id}
-                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 animate-fade-in ${
-                      remainingSecs <= 2 ? 'opacity-40' : 'opacity-100'
+                    className={`flex items-end gap-2.5 ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in ${
+                      remainingSecs <= 2 ? 'opacity-40 transition-opacity' : 'opacity-100'
                     }`}
                   >
-                    {/* Modern Messenger Bubble */}
-                    {isFile ? (
-                      /* File Bubble */
-                      <div
-                        className={`max-w-xs sm:max-w-sm p-3.5 rounded-2xl border ${
-                          isMe
-                            ? 'bg-sage-50 border-sage-200 rounded-br-none text-slate-900'
-                            : 'bg-white border-slate-200 rounded-bl-none text-slate-900 shadow-xs'
-                        }`}
+                    {/* Peer Avatar on the left side of peer bubbles */}
+                    {!isMe && (
+                      <div 
+                        className="avatar-badge bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-mono shadow-xs mb-0.5"
+                        title={verifiedPeer?.fingerprint || 'Peer'}
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-white border border-slate-200 text-slate-700 shrink-0">
-                            {msg.status === 'completed' ? (
-                              <FileText className="w-5 h-5" />
-                            ) : (
-                              <Loader2 className="w-5 h-5 animate-spin text-sage-600" />
-                            )}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-slate-900 truncate" title={msg.fileName}>
-                              {msg.fileName}
-                            </p>
-                            <span className="text-[10px] text-slate-500">
-                              {formatFileSize(msg.fileSize)}
-                            </span>
-
-                            {msg.status === 'transferring' ? (
-                              <div className="mt-1.5 space-y-1">
-                                <div className="w-full h-1 bg-slate-200 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-sage-500 transition-all duration-150"
-                                    style={{ width: `${msg.progress || 0}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ) : msg.status === 'completed' && msg.blobUrl ? (
-                              <div className="mt-2">
-                                <a
-                                  href={msg.blobUrl}
-                                  download={msg.fileName}
-                                  className="btn-primary text-[11px] py-1 px-2.5 inline-flex items-center gap-1"
-                                >
-                                  <Download className="w-3 h-3" />
-                                  <span>Download</span>
-                                </a>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Text Message Bubble */
-                      <div
-                        className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm max-w-xs sm:max-w-md break-words ${
-                          isMe
-                            ? 'bg-sage-500 text-white rounded-br-none'
-                            : 'bg-white text-slate-900 border border-slate-200 rounded-bl-none shadow-xs'
-                        }`}
-                      >
-                        {msg.text}
+                        {peerInitial}
                       </div>
                     )}
 
-                    {/* Subtle Timestamp / Burn timer */}
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 px-1">
-                      {isBurn ? (
-                        <span className="text-amber-600 font-medium flex items-center gap-0.5">
-                          <Flame className="w-2.5 h-2.5 text-amber-500" />
-                          <span>{remainingSecs}s</span>
-                        </span>
-                      ) : (
-                        <span>{remainingSecs}s</span>
+                    {/* Speech Bubble Container */}
+                    <div
+                      className={`relative px-4 py-2.5 sm:px-4.5 sm:py-3 rounded-[18px] max-w-[82%] sm:max-w-[72%] shadow-xs transition-all ${
+                        isMe
+                          ? 'bg-sage-600 text-white rounded-br-[3px]'
+                          : 'bg-white text-slate-900 border border-slate-200/90 rounded-bl-[3px]'
+                      }`}
+                    >
+                      {/* Left Pointer Tail for Peer */}
+                      {!isMe && (
+                        <svg
+                          className="absolute -left-1.5 bottom-0 w-2.5 h-3.5 pointer-events-none"
+                          viewBox="0 0 10 14"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M10 0 C10 6 7 14 0 14 C4.5 14 10 10.5 10 6.5 Z"
+                            fill="#ffffff"
+                          />
+                          <path
+                            d="M10 0 C10 6 7 14 0 14"
+                            stroke="#e2e8f0"
+                            strokeWidth="1"
+                          />
+                        </svg>
                       )}
+
+                      {/* Right Pointer Tail for Me */}
+                      {isMe && (
+                        <svg
+                          className="absolute -right-1.5 bottom-0 w-2.5 h-3.5 pointer-events-none"
+                          viewBox="0 0 10 14"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M0 0 C0 6 3 14 10 14 C5.5 14 0 10.5 0 6.5 Z"
+                            fill="#5a846a"
+                          />
+                        </svg>
+                      )}
+
+                      {/* Content: File or Text */}
+                      {isFile ? (
+                        /* File Message inside unified speech bubble */
+                        <div className="space-y-2 min-w-[200px] sm:min-w-[240px]">
+                          <div className="flex items-start gap-2.5">
+                            <div className={`p-2 rounded-xl shrink-0 ${
+                              isMe ? 'bg-white/20 text-white' : 'bg-slate-100 border border-slate-200 text-slate-700'
+                            }`}>
+                              {msg.status === 'completed' ? (
+                                <FileText className="w-4.5 h-4.5" />
+                              ) : (
+                                <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold truncate" title={msg.fileName}>
+                                {msg.fileName}
+                              </p>
+                              <span className={`text-[10px] ${isMe ? 'text-sage-100' : 'text-slate-500'}`}>
+                                {formatFileSize(msg.fileSize)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Transfer progress or Download Button */}
+                          {msg.status === 'transferring' ? (
+                            <div className="space-y-1 pt-1">
+                              <div className={`w-full h-1.5 rounded-full overflow-hidden ${isMe ? 'bg-black/20' : 'bg-slate-200'}`}>
+                                <div
+                                  className={`h-full transition-all duration-150 ${isMe ? 'bg-white' : 'bg-sage-500'}`}
+                                  style={{ width: `${msg.progress || 0}%` }}
+                                />
+                              </div>
+                            </div>
+                          ) : msg.status === 'completed' && msg.blobUrl ? (
+                            <div className="pt-1">
+                              <a
+                                href={msg.blobUrl}
+                                download={msg.fileName}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                                  isMe
+                                    ? 'bg-white text-sage-800 hover:bg-slate-100 shadow-xs'
+                                    : 'bg-sage-600 text-white hover:bg-sage-700 shadow-xs'
+                                }`}
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>Download</span>
+                              </a>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        /* Text Message */
+                        <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
+                          {msg.text}
+                        </p>
+                      )}
+
+                      {/* Subtle Timestamp and Burn Countdown Info */}
+                      <div className={`flex items-center justify-end gap-1.5 text-[10px] mt-1 ${
+                        isMe ? 'text-sage-200' : 'text-slate-400'
+                      }`}>
+                        {timeStr && <span>{timeStr}</span>}
+                        {timeStr && (isBurn || remainingSecs < DEFAULT_TTL_SECONDS) && <span>•</span>}
+                        {isBurn ? (
+                          <span className={`inline-flex items-center gap-0.5 font-medium ${
+                            isMe ? 'text-amber-200' : 'text-amber-600'
+                          }`}>
+                            <Flame className="w-2.5 h-2.5" />
+                            <span>{remainingSecs}s</span>
+                          </span>
+                        ) : remainingSecs < DEFAULT_TTL_SECONDS ? (
+                          <span>{remainingSecs}s</span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1144,30 +1218,34 @@ export default function ConnectRoom({
 
           {/* Staged File Preview Bar */}
           {attachedFile && (
-            <div className="p-3 bg-white border-t border-slate-200 flex items-center justify-between gap-3 text-xs">
+            <div className="px-4 py-2 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between gap-3 text-xs animate-slide-up">
               <div className="flex items-center gap-2 min-w-0">
-                <File className="w-4 h-4 text-slate-600 shrink-0" />
-                <span className="font-medium text-slate-800 truncate max-w-xs">{attachedFile.name}</span>
+                <div className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 shrink-0">
+                  <File className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-medium text-slate-800 truncate max-w-[180px] sm:max-w-xs">{attachedFile.name}</span>
                 <span className="text-slate-400 shrink-0">({formatFileSize(attachedFile.size)})</span>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => setFileBurnOnRead(!fileBurnOnRead)}
-                  className={`px-2 py-1 rounded-md text-[11px] flex items-center gap-1 border ${
+                  className={`px-2 py-0.5 rounded-full text-[10px] flex items-center gap-1 border transition-colors ${
                     fileBurnOnRead
                       ? 'bg-amber-50 border-amber-200 text-amber-700'
-                      : 'bg-slate-50 border-slate-200 text-slate-500'
+                      : 'bg-white border-slate-200 text-slate-500'
                   }`}
+                  title="Burn file on view"
                 >
-                  <Flame className="w-3 h-3" />
+                  <Flame className="w-2.5 h-2.5" />
                   <span>Burn</span>
                 </button>
 
                 <button
                   onClick={() => setAttachedFile(null)}
                   className="p-1 text-slate-400 hover:text-slate-600"
+                  title="Cancel attachment"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -1175,7 +1253,7 @@ export default function ConnectRoom({
                 <button
                   onClick={handleSendAttachedFile}
                   disabled={isSendingFile}
-                  className="btn-primary text-xs py-1 px-3 flex items-center gap-1"
+                  className="btn-primary text-xs py-1 px-2.5 flex items-center gap-1 rounded-full"
                 >
                   {isSendingFile ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                   <span>Send</span>
@@ -1184,47 +1262,55 @@ export default function ConnectRoom({
             </div>
           )}
 
-          {/* Clean Message Input Area */}
-          <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
-              title="Attach File"
-            >
-              <Paperclip className="w-4.5 h-4.5" />
-            </button>
+          {/* Clean Rounded Pill Input Bar */}
+          <div className="p-3 bg-white border-t border-slate-200/80 shrink-0">
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+              <div className="chat-input-pill flex-1 flex items-center gap-1.5 px-2 py-1">
+                {/* Paperclip File Attachment Button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors shrink-0"
+                  title="Attach File (Encrypted P2P)"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
 
-            <button
-              type="button"
-              onClick={() => setBurnOnReadEnabled(!burnOnReadEnabled)}
-              className={`p-2 rounded-xl border transition-colors shrink-0 ${
-                burnOnReadEnabled
-                  ? 'bg-amber-50 border-amber-200 text-amber-600'
-                  : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
-              }`}
-              title="Burn on Read: message self-destructs 5s after viewing"
-            >
-              <Flame className="w-4 h-4" />
-            </button>
+                {/* Burn On Read Flame Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setBurnOnReadEnabled(!burnOnReadEnabled)}
+                  className={`p-1.5 rounded-full transition-colors shrink-0 ${
+                    burnOnReadEnabled
+                      ? 'bg-amber-100 text-amber-600'
+                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200/60'
+                  }`}
+                  title="Burn on Read: Message self-destructs 5s after viewing"
+                >
+                  <Flame className="w-4 h-4" />
+                </button>
 
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Type an encrypted message..."
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400"
-            />
+                {/* Input Text Field */}
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Type an encrypted message..."
+                  className="flex-1 bg-transparent border-none outline-none text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 px-1 py-1"
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={!inputText.trim()}
-              className="btn-primary p-2.5 rounded-xl flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Send"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
+              {/* Circular Send Action Button */}
+              <button
+                type="submit"
+                disabled={!inputText.trim()}
+                className="w-9 h-9 rounded-full bg-sage-600 hover:bg-sage-700 text-white flex items-center justify-center shrink-0 shadow-xs transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-sage-600 cursor-pointer"
+                title="Send encrypted message"
+              >
+                <Send className="w-4 h-4 ml-0.5" />
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>

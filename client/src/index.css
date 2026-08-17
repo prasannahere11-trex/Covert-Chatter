@@ -453,3 +453,79 @@ input:focus, textarea:focus, select:focus {
 ::-webkit-scrollbar-track { background: #fafafa; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Speech Bubble Messenger Styles */
+.speech-bubble {
+  position: relative;
+  border-radius: 18px;
+  max-width: 82%;
+  word-break: break-word;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+}
+
+@media (min-width: 640px) {
+  .speech-bubble {
+    max-width: 72%;
+  }
+}
+
+.speech-bubble-peer {
+  background-color: #ffffff;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  border-bottom-left-radius: 4px;
+}
+
+.speech-bubble-me {
+  background-color: var(--accent-sage);
+  color: #ffffff;
+  border: 1px solid transparent;
+  border-bottom-right-radius: 4px;
+}
+
+/* Pointer Tails */
+.bubble-tail-peer {
+  position: absolute;
+  bottom: 0;
+  left: -7px;
+  width: 9px;
+  height: 14px;
+  pointer-events: none;
+}
+
+.bubble-tail-me {
+  position: absolute;
+  bottom: 0;
+  right: -7px;
+  width: 9px;
+  height: 14px;
+  pointer-events: none;
+}
+
+/* Round Avatar */
+.avatar-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* Rounded Pill Input Container */
+.chat-input-pill {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-input-pill:focus-within {
+  background-color: #ffffff;
+  border-color: var(--accent-sage);
+  box-shadow: 0 0 0 3px rgba(107, 155, 124, 0.15);
+}

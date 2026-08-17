@@ -89,49 +89,31 @@ export default function App() {
         />
       )}
 
-      {/* Top Header Navigation */}
-      <header className="glass-nav sticky top-0 z-40 px-4 sm:px-8 py-3.5">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Logo & Subtitle */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-sage-50 border border-sage-200 flex items-center justify-center text-sage-600">
-              <Shield className="w-4.5 h-4.5" />
+      {/* Top Header Navigation — Thin, unobtrusive branded header bar */}
+      <header className="glass-nav sticky top-0 z-40 px-4 sm:px-6 py-2.5">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+          {/* Circular Shield Logo & App Name */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-sage-50 border border-sage-200/90 flex items-center justify-center text-sage-600 shadow-xs">
+              <Shield className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold tracking-tight text-slate-900">
-                  Covert Chatter
-                </h1>
-                <span className="badge-sage text-[10px] py-0.5 px-2">
-                  Encrypted
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500">
-                Zero-Knowledge Ephemeral P2P Messenger
-              </p>
-            </div>
+            <span className="text-sm sm:text-base font-bold tracking-tight text-slate-900">
+              Covert Chatter
+            </span>
           </div>
 
-          {/* Identity Quick Status */}
-          {identity && !fatalError && (
-            <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-full text-xs text-slate-600">
-              <Fingerprint className="w-3.5 h-3.5 text-sage-600" />
-              <span className="text-slate-500">My ID:</span>
-              <span className="font-mono text-slate-800 font-semibold truncate max-w-[120px] sm:max-w-[160px]">
-                {identity.fingerprint.slice(0, 9)}...
-              </span>
-              {verifiedPeer && (
-                <>
-                  <span className="text-slate-300">|</span>
-                  <Lock className="w-3 h-3 text-sage-600" />
-                  <span className="text-slate-500">Peer:</span>
-                  <span className="font-mono text-slate-800 font-semibold truncate max-w-[100px] sm:max-w-[130px]">
-                    {verifiedPeer.fingerprint.slice(0, 9)}...
-                  </span>
-                </>
-              )}
-            </div>
-          )}
+          {/* Connection Status Pill Badge */}
+          <div className="flex items-center gap-2">
+            {identity && !fatalError && (
+              <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-400 mr-1 font-mono">
+                <span>ID: {identity.fingerprint.slice(0, 6)}...</span>
+              </div>
+            )}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-sage-50 text-sage-700 border border-sage-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-sage-500 animate-pulse" />
+              <span>{verifiedPeer ? 'Connected' : 'Encrypted'}</span>
+            </span>
+          </div>
         </div>
       </header>
 
