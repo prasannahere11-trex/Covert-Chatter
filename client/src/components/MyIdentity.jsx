@@ -87,13 +87,13 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
         <div className="flex flex-col md:flex-row items-center gap-8 justify-between">
           {/* Left: QR Display */}
           <div className="flex flex-col items-center gap-3">
-            <div className="p-4 bg-white rounded-2xl border-2 border-[#D4FF27] shadow-[0_0_20px_rgba(212,255,39,0.2)] relative">
+            <div className="p-3 sm:p-4 bg-white rounded-2xl border-2 border-[#D4FF27] shadow-[0_0_25px_rgba(212,255,39,0.25)] relative">
               <QRCodeSVG
                 id="identity-qr-code"
                 value={qrPayload}
-                size={200}
-                level="M"
-                includeMargin={false}
+                size={240}
+                level="L"
+                includeMargin={true}
                 bgColor="#FFFFFF"
                 fgColor="#121212"
               />

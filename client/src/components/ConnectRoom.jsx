@@ -278,15 +278,42 @@ export default function ConnectRoom({
         const scanner = new Html5Qrcode(scannerContainerId, {
           formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
           verbose: false,
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
         });
         html5QrScannerRef.current = scanner;
 
-        await scanner.start(
-          { facingMode: 'environment' },
-          { fps: 12, qrbox: { width: 240, height: 240 }, aspectRatio: 1.0 },
-          (decodedText) => handleQrScanSuccess(decodedText),
-          () => {}
-        );
+        const config = {
+          fps: 15,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const size = Math.max(220, Math.floor(minEdge * 0.85));
+            return { width: size, height: size };
+          },
+          aspectRatio: 1.0,
+        };
+        const successCb = (decodedText) => handleQrScanSuccess(decodedText);
+        const errorCb = () => {};
+
+        let cameraDeviceOrConfig = { facingMode: 'environment' };
+        try {
+          const devices = await Html5Qrcode.getCameras();
+          if (devices && devices.length > 0) {
+            const backCamera = devices.find((d) =>
+              /back|rear|environment/i.test(d.label)
+            );
+            cameraDeviceOrConfig = backCamera ? backCamera.id : devices[0].id;
+          }
+        } catch {
+          // Fall back to constraint
+        }
+
+        try {
+          await scanner.start(cameraDeviceOrConfig, config, successCb, errorCb);
+        } catch (firstErr) {
+          await scanner.start({ facingMode: 'user' }, config, successCb, errorCb);
+        }
       } catch (err) {
         console.warn('Camera error:', err);
         setCameraError(
@@ -581,7 +608,10 @@ export default function ConnectRoom({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div id="covert-file-temp-scanner" style={{ display: 'none' }} />
+      <div 
+        id="covert-file-temp-scanner" 
+        style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '250px', height: '250px', opacity: 0, pointerEvents: 'none' }} 
+      />
 
       {/* Top Subtle Config Bar */}
       <div className="flex items-center justify-between text-xs text-slate-400 px-1">
@@ -861,12 +891,12 @@ export default function ConnectRoom({
             </p>
           </div>
 
-          <div className="p-4 bg-white rounded-2xl border-2 border-[#D4FF27] inline-block shadow-[0_0_20px_rgba(212,255,39,0.2)]">
+          <div className="p-3 sm:p-4 bg-white rounded-2xl border-2 border-[#D4FF27] inline-block shadow-[0_0_25px_rgba(212,255,39,0.25)]">
             <QRCodeSVG
               value={hostQrPayload}
-              size={200}
-              level="M"
-              includeMargin={false}
+              size={250}
+              level="L"
+              includeMargin={true}
               bgColor="#FFFFFF"
               fgColor="#121212"
             />
@@ -950,7 +980,7 @@ export default function ConnectRoom({
             onDragEnter={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`rounded-[28px] border border-[#A8CC19]/40 overflow-hidden flex flex-col h-[650px] relative transition-all bg-[#121212] shadow-2xl ${
+            className={`rounded-[28px] border border-[#A8CC19]/40 overflow-hidden flex flex-col chat-container-responsive relative transition-all bg-[#121212] shadow-2xl ${
               isDraggingOver ? 'ring-4 ring-[#D4FF27]/40 bg-[#1C1C1C]' : ''
             }`}
           >

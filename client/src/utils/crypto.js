@@ -191,8 +191,10 @@ export async function validatePeerIdentityPayload(rawPayload) {
 
     // Recompute fingerprint to ensure cryptographic integrity
     const computedFingerprint = await computeFingerprint(ecdsa, ecdh);
+    const cleanComp = computedFingerprint.replace(/\s+/g, '').toUpperCase();
+    const cleanOrig = fingerprint ? fingerprint.replace(/\s+/g, '').toUpperCase() : '';
 
-    if (fingerprint && fingerprint !== computedFingerprint) {
+    if (fingerprint && cleanOrig !== cleanComp) {
       return {
         valid: false,
         error: 'Fingerprint mismatch: The payload fingerprint does not match computed public key digest.',
@@ -204,7 +206,7 @@ export async function validatePeerIdentityPayload(rawPayload) {
       peerIdentity: {
         protocol: protocol || 'covert-chatter',
         version: version || 1,
-        room: parsed.room || null,
+        room: payload.room || null,
         ecdsa,
         ecdh,
         fingerprint: computedFingerprint,

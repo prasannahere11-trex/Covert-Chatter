@@ -72,6 +72,9 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
       const html5QrCode = new Html5Qrcode(scannerContainerId, {
         formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
         verbose: false,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true,
+        },
       });
       scannerRef.current = html5QrCode;
 
@@ -82,17 +85,45 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
       const qrCodeErrorCallback = () => {};
 
       const config = {
-        fps: 10,
-        qrbox: { width: 240, height: 240 },
+        fps: 15,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const size = Math.max(220, Math.floor(minEdge * 0.85));
+          return { width: size, height: size };
+        },
         aspectRatio: 1.0,
       };
 
-      await html5QrCode.start(
-        { facingMode: 'environment' },
-        config,
-        qrCodeSuccessCallback,
-        qrCodeErrorCallback
-      );
+      // Try camera discovery first for optimal hardware matching
+      let cameraDeviceOrConfig = { facingMode: 'environment' };
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          const backCamera = devices.find((d) =>
+            /back|rear|environment/i.test(d.label)
+          );
+          cameraDeviceOrConfig = backCamera ? backCamera.id : devices[0].id;
+        }
+      } catch {
+        // Fall back to constraint if enumeration fails
+      }
+
+      try {
+        await html5QrCode.start(
+          cameraDeviceOrConfig,
+          config,
+          qrCodeSuccessCallback,
+          qrCodeErrorCallback
+        );
+      } catch (firstErr) {
+        // If back camera / specific config failed, try user facing camera
+        await html5QrCode.start(
+          { facingMode: 'user' },
+          config,
+          qrCodeSuccessCallback,
+          qrCodeErrorCallback
+        );
+      }
 
       setIsScanning(true);
     } catch (err) {
@@ -100,8 +131,8 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
       let msg = 'Failed to access camera. Please check browser permissions.';
       if (err.name === 'NotAllowedError' || err.message?.includes('Permission')) {
         msg = 'Camera permission denied. Please allow camera access in your browser settings.';
-      } else if (err.name === 'NotFoundError') {
-        msg = 'No camera found on this device. You can still scan by uploading an image.';
+      } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
+        msg = 'No compatible camera found. You can scan by uploading an image of the QR code.';
       }
       setCameraError(msg);
       setIsScanning(false);
@@ -171,7 +202,10 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div id="file-qr-temp-reader" style={{ display: 'none' }} />
+      <div 
+        id="file-qr-temp-reader" 
+        style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '250px', height: '250px', opacity: 0, pointerEvents: 'none' }} 
+      />
 
       {!scannedPeer ? (
         <div className="glass-panel p-6 sm:p-8 space-y-5 bg-[#1C1C1C] border-[#A8CC19]/40">

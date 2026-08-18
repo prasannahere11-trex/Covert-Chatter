@@ -41,6 +41,7 @@ code, pre, .font-mono {
 .h-\[560px\] { height: 560px; }
 .h-\[600px\] { height: 600px; }
 .h-\[650px\] { height: 650px; }
+.chat-container-responsive { height: clamp(480px, calc(100vh - 210px), 700px); }
 .flex { display: flex; }
 .inline-flex { display: inline-flex; }
 .flex-col { flex-direction: column; }
