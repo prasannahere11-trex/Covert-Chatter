@@ -45,10 +45,10 @@
 import { encryptMessage, decryptMessage, signMessage, verifyMessage } from './encryption';
 import { DEFAULT_FILE_TTL_SECONDS, BURN_ON_READ_DELAY_SECONDS } from './ephemeral';
 
-export const CHUNK_SIZE = 16384; // 16 KB per chunk
+export const CHUNK_SIZE = 16384; // 16 KB raw binary chunk (Optimal performance for WebRTC SCTP stream)
 export const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB max limit
-export const BUFFER_HIGH_WATER_MARK = 65536; // 64 KB
-export const BUFFER_LOW_THRESHOLD = 32768; // 32 KB
+export const BUFFER_HIGH_WATER_MARK = 128 * 1024; // 128 KB
+export const BUFFER_LOW_THRESHOLD = 32 * 1024; // 32 KB
 
 /**
  * Format bytes into human-readable string (e.g. "450 KB", "3.2 MB")
@@ -65,20 +65,24 @@ export function formatFileSize(bytes) {
 }
 
 /**
- * Convert an ArrayBuffer / Uint8Array to a Base64 string for safe JSON wire transmission.
+ * Fast Native ArrayBuffer/Uint8Array to Base64 (Chunked apply avoids call stack limit while using C++ native conversion)
  * 
  * @param {ArrayBuffer|Uint8Array} buffer
  * @returns {string}
  */
-export function arrayBufferToBase64(buffer) {
+export function uint8ArrayToBase64(buffer) {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let binary = '';
-  const bytes = new Uint8Array(buffer);
   const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const CHUNK_LEN = 0x8000; // 32KB sub-slices for instant native conversion
+  for (let i = 0; i < len; i += CHUNK_LEN) {
+    const sub = bytes.subarray(i, Math.min(i + CHUNK_LEN, len));
+    binary += String.fromCharCode.apply(null, sub);
   }
   return window.btoa(binary);
 }
+
+export const arrayBufferToBase64 = uint8ArrayToBase64;
 
 /**
  * Convert a Base64 string back to a Uint8Array byte buffer.
@@ -94,6 +98,53 @@ export function base64ToUint8Array(base64) {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
+}
+
+/**
+ * High-speed hardware-accelerated AES-256-GCM chunk encryption directly on raw bytes
+ * 
+ * @param {CryptoKey} sessionKey
+ * @param {Uint8Array} rawBytes
+ * @returns {Promise<{ iv: string, ciphertext: string }>}
+ */
+export async function encryptChunkBuffer(sessionKey, rawBytes) {
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const ciphertextBuffer = await window.crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv,
+      tagLength: 128,
+    },
+    sessionKey,
+    rawBytes
+  );
+  return {
+    iv: uint8ArrayToBase64(iv),
+    ciphertext: uint8ArrayToBase64(new Uint8Array(ciphertextBuffer)),
+  };
+}
+
+/**
+ * High-speed hardware-accelerated AES-256-GCM chunk decryption returning raw bytes
+ * 
+ * @param {CryptoKey} sessionKey
+ * @param {string} base64Iv
+ * @param {string} base64Ciphertext
+ * @returns {Promise<Uint8Array>}
+ */
+export async function decryptChunkBuffer(sessionKey, base64Iv, base64Ciphertext) {
+  const iv = base64ToUint8Array(base64Iv);
+  const ciphertext = base64ToUint8Array(base64Ciphertext);
+  const decryptedBuffer = await window.crypto.subtle.decrypt(
+    {
+      name: 'AES-GCM',
+      iv,
+      tagLength: 128,
+    },
+    sessionKey,
+    ciphertext
+  );
+  return new Uint8Array(decryptedBuffer);
 }
 
 /**
@@ -221,24 +272,21 @@ export async function sendFileStream({
     const end = Math.min(start + CHUNK_SIZE, file.size);
     const blobSlice = file.slice(start, end);
 
-    // Read chunk bytes
+    // Read raw chunk bytes
     const arrayBuffer = await blobSlice.arrayBuffer();
-    const base64Chunk = arrayBufferToBase64(arrayBuffer);
+    const chunkBytes = new Uint8Array(arrayBuffer);
 
-    // Encrypt chunk with fresh random 12-byte IV
-    const { iv, ciphertext } = await encryptMessage(sessionKey, base64Chunk);
-
-    // Digitally sign chunk ciphertext with ECDSA
-    const signature = await signMessage(mySigningPrivateKey, ciphertext);
+    // Hardware-accelerated AES-256-GCM AEAD encryption
+    const { iv, ciphertext } = await encryptChunkBuffer(sessionKey, chunkBytes);
 
     // 🎓 BACKPRESSURE FLOW CONTROL:
-    // If the outgoing SCTP buffer exceeds 64KB, pause sending and wait for
+    // If the outgoing SCTP buffer exceeds 128KB, pause sending and wait for
     // the browser to drain the queue below 32KB before dispatching more chunks.
     if (dataChannel.bufferedAmount > BUFFER_HIGH_WATER_MARK) {
       await waitForBufferedAmountLow(dataChannel);
     }
 
-    // Dispatch chunk message
+    // Dispatch lightweight chunk message
     dataChannel.send(
       JSON.stringify({
         type: 'file-chunk',
@@ -246,7 +294,6 @@ export async function sendFileStream({
         chunkIndex,
         iv,
         ciphertext,
-        signature,
       })
     );
 
@@ -404,7 +451,7 @@ export class FileReceiver {
    * Handle incoming 'file-chunk' message
    */
   async handleFileChunk(data) {
-    const { fileId, chunkIndex, iv, ciphertext, signature } = data;
+    const { fileId, chunkIndex, iv, ciphertext } = data;
     const transfer = this.transfers.get(fileId);
 
     if (!transfer) {
@@ -412,24 +459,21 @@ export class FileReceiver {
       return;
     }
 
-    // 1. Verify chunk ECDSA signature
-    const isValidSignature = await verifyMessage(this.peerEcdsaPublicKeyJWK, ciphertext, signature);
-    if (!isValidSignature) {
-      console.warn(`[FileReceiver] Chunk ${chunkIndex} signature invalid. Dropping chunk.`);
-      return;
-    }
-
-    // 2. Decrypt chunk AES-GCM
-    let base64Chunk;
+    // High-speed hardware-accelerated AES-256-GCM decryption & authentication
+    let chunkBytes;
     try {
-      base64Chunk = await decryptMessage(this.sessionKey, iv, ciphertext);
+      if (typeof ciphertext === 'string') {
+        chunkBytes = await decryptChunkBuffer(this.sessionKey, iv, ciphertext);
+      } else {
+        // Fallback for array format
+        const base64Chunk = await decryptMessage(this.sessionKey, iv, ciphertext);
+        chunkBytes = base64ToUint8Array(base64Chunk);
+      }
     } catch (err) {
-      console.error(`[FileReceiver] Chunk ${chunkIndex} decryption failed:`, err);
+      console.error(`[FileReceiver] Chunk ${chunkIndex} decryption / AEAD authentication failed:`, err);
       return;
     }
 
-    // 3. Convert to Uint8Array and store in chunk map
-    const chunkBytes = base64ToUint8Array(base64Chunk);
     transfer.receivedChunks.set(chunkIndex, chunkBytes);
 
     // 4. Update progress

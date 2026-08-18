@@ -200,7 +200,7 @@ export default function ConnectRoom({
 
       return updated ? next : prev;
     });
-  }, [messages.length]);
+  }, [messages]);
 
   // Anti-Persistence Guard: Window Blur & Tab Close Auto-Purge
   useEffect(() => {
@@ -484,7 +484,13 @@ export default function ConnectRoom({
 
   const handleSendMessage = async (e) => {
     e?.preventDefault();
-    if (!inputText.trim() || !sessionRef.current || status !== 'connected') return;
+    if (status !== 'connected' || !sessionRef.current) return;
+
+    if (attachedFile && !isSendingFile) {
+      await handleSendAttachedFile();
+    }
+
+    if (!inputText.trim()) return;
 
     const textToSend = inputText.trim();
     setInputText('');
@@ -1234,8 +1240,12 @@ export default function ConnectRoom({
                                   </div>
                                 </div>
 
-                                {msg.status === 'transferring' ? (
+                                {msg.status !== 'completed' ? (
                                   <div className="space-y-1 pt-1">
+                                    <div className="flex items-center justify-between text-[10px] text-[#121212]/75 font-mono">
+                                      <span>{msg.status === 'receiving' ? 'Receiving...' : 'Sending...'}</span>
+                                      <span>{msg.progress || 0}%</span>
+                                    </div>
                                     <div className="w-full h-2 rounded-full overflow-hidden bg-black/20">
                                       <div
                                         className="h-full transition-all duration-150 bg-[#121212]"
@@ -1243,7 +1253,7 @@ export default function ConnectRoom({
                                       />
                                     </div>
                                   </div>
-                                ) : msg.status === 'completed' && msg.blobUrl ? (
+                                ) : msg.blobUrl ? (
                                   <div className="pt-1">
                                     <a
                                       href={msg.blobUrl}
@@ -1312,8 +1322,12 @@ export default function ConnectRoom({
                                     </div>
                                   </div>
 
-                                  {msg.status === 'transferring' ? (
+                                  {msg.status !== 'completed' ? (
                                     <div className="space-y-1 pt-1">
+                                      <div className="flex items-center justify-between text-[10px] text-[#121212]/75 font-mono">
+                                        <span>Receiving...</span>
+                                        <span>{msg.progress || 0}%</span>
+                                      </div>
                                       <div className="w-full h-2 rounded-full overflow-hidden bg-black/20">
                                         <div
                                           className="h-full transition-all duration-150 bg-[#121212]"
@@ -1321,7 +1335,7 @@ export default function ConnectRoom({
                                         />
                                       </div>
                                     </div>
-                                  ) : msg.status === 'completed' && msg.blobUrl ? (
+                                  ) : msg.blobUrl ? (
                                     <div className="pt-1">
                                       <a
                                         href={msg.blobUrl}
@@ -1425,7 +1439,7 @@ export default function ConnectRoom({
                   title="Attach File or Photo (Encrypted P2P)"
                   aria-label="Attach file"
                 >
-                  <Camera className="w-5 h-5" />
+                  <Paperclip className="w-5 h-5 text-[#A8CC19] hover:text-[#D4FF27]" />
                 </button>
 
                 {/* Text input: #121212 bg, #A8CC19 border, white text, rounded pill shape */}
@@ -1434,7 +1448,7 @@ export default function ConnectRoom({
                     type="text"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Type an encrypted message..."
+                    placeholder={attachedFile ? "Add a message or press send..." : "Type an encrypted message..."}
                     className="w-full bg-transparent border-none outline-none text-[15px] sm:text-[16px] text-white placeholder:text-slate-500 py-1"
                   />
                 </div>
@@ -1459,9 +1473,9 @@ export default function ConnectRoom({
                   {/* Circular send button */}
                   <button
                     type="submit"
-                    disabled={!inputText.trim()}
+                    disabled={!inputText.trim() && !attachedFile}
                     className="chat-send-btn w-10 h-10 min-w-[40px] min-h-[40px]"
-                    title="Send encrypted message"
+                    title="Send encrypted message or file"
                     aria-label="Send message"
                   >
                     <Send className="w-4 h-4 ml-0.5 text-[#121212]" />

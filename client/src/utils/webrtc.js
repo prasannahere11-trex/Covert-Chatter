@@ -107,6 +107,34 @@ export class PeerSession {
   }
 
   /**
+   * Ensure FileReceiver instance is created and updated with current session keys
+   */
+  ensureFileReceiver() {
+    if (!this.fileReceiver) {
+      this.fileReceiver = new FileReceiver({
+        sessionKey: this.sessionKey,
+        peerEcdsaPublicKeyJWK: this.peerIdentity?.ecdsa,
+        onFileProgress: (fileData) => {
+          if (this.callbacks.onFileProgress) {
+            this.callbacks.onFileProgress(fileData);
+          } else {
+            this.callbacks.onMessageReceived(fileData);
+          }
+        },
+        onFileComplete: (fileData) => {
+          this.callbacks.onMessageReceived(fileData);
+        },
+        onError: (fileId, errMsg) => {
+          console.error('[WebRTC] File receive error:', fileId, errMsg);
+        },
+      });
+    } else {
+      this.fileReceiver.updateKeys(this.sessionKey, this.peerIdentity?.ecdsa);
+    }
+    return this.fileReceiver;
+  }
+
+  /**
    * Update or set peer identity and derive session key if channel is already active
    */
   async setPeerIdentity(peerIdentity) {
@@ -118,13 +146,12 @@ export class PeerSession {
           this.peerIdentity.ecdh
         );
         console.log('[E2EE] Derived shared AES-256-GCM session key successfully.');
-
-        if (this.fileReceiver) {
-          this.fileReceiver.updateKeys(this.sessionKey, this.peerIdentity.ecdsa);
-        }
+        this.ensureFileReceiver();
       } catch (err) {
         console.error('[E2EE] Failed to derive shared secret:', err);
       }
+    } else {
+      this.ensureFileReceiver();
     }
   }
 
@@ -458,25 +485,7 @@ export class PeerSession {
     dc.bufferedAmountLowThreshold = BUFFER_LOW_THRESHOLD;
 
     // Initialize FileReceiver for encrypted streaming files
-    if (this.peerIdentity?.ecdsa) {
-      this.fileReceiver = new FileReceiver({
-        sessionKey: this.sessionKey,
-        peerEcdsaPublicKeyJWK: this.peerIdentity.ecdsa,
-        onFileProgress: (fileData) => {
-          if (this.callbacks.onFileProgress) {
-            this.callbacks.onFileProgress(fileData);
-          } else {
-            this.callbacks.onMessageReceived(fileData);
-          }
-        },
-        onFileComplete: (fileData) => {
-          this.callbacks.onMessageReceived(fileData);
-        },
-        onError: (fileId, errMsg) => {
-          console.error('[WebRTC] File receive error:', fileId, errMsg);
-        },
-      });
-    }
+    this.ensureFileReceiver();
 
     dc.onopen = async () => {
       console.log('[WebRTC] DataChannel "chat" is OPEN!');
@@ -490,10 +499,7 @@ export class PeerSession {
             this.peerIdentity.ecdh
           );
           console.log('[E2EE] AES-256-GCM session key active.');
-
-          if (this.fileReceiver) {
-            this.fileReceiver.updateKeys(this.sessionKey, this.peerIdentity.ecdsa);
-          }
+          this.ensureFileReceiver();
         } catch (err) {
           console.error('[E2EE] Session key derivation failed:', err);
         }
@@ -546,15 +552,18 @@ export class PeerSession {
 
         // 📁 Pass 5: File Transfer Protocol Messages
         if (payload.type === 'file-start') {
-          await this.fileReceiver?.handleFileStart(payload);
+          const receiver = this.ensureFileReceiver();
+          await receiver.handleFileStart(payload);
           return;
         }
         if (payload.type === 'file-chunk') {
-          await this.fileReceiver?.handleFileChunk(payload);
+          const receiver = this.ensureFileReceiver();
+          await receiver.handleFileChunk(payload);
           return;
         }
         if (payload.type === 'file-end') {
-          await this.fileReceiver?.handleFileEnd(payload);
+          const receiver = this.ensureFileReceiver();
+          await receiver.handleFileEnd(payload);
           return;
         }
 
