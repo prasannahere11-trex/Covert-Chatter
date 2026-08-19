@@ -64,13 +64,28 @@ const httpServer = http.createServer((req, res) => {
       if (!err && stats.isFile()) {
         const ext = path.extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-        res.writeHead(200, { 'Content-Type': contentType });
+        const headers = { 'Content-Type': contentType };
+
+        if (ext === '.html') {
+          headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+          headers['Pragma'] = 'no-cache';
+          headers['Expires'] = '0';
+        } else {
+          headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+        }
+
+        res.writeHead(200, headers);
         fs.createReadStream(filePath).pipe(res);
       } else {
         // SPA Fallback: serve index.html for unknown routes
         const indexPath = path.join(CLIENT_DIST, 'index.html');
         if (fs.existsSync(indexPath)) {
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          });
           fs.createReadStream(indexPath).pipe(res);
         } else {
           res.writeHead(404, { 'Content-Type': 'text/plain' });
