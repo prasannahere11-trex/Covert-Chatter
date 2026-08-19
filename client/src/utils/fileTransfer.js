@@ -225,6 +225,7 @@ export async function sendFileStream({
     mimeType: file.type || 'application/octet-stream',
     totalChunks,
     sentAt: now,
+    ttlSeconds,
     expiresAt,
     burnOnRead,
     burnDelay: BURN_ON_READ_DELAY_SECONDS,
@@ -410,6 +411,12 @@ export class FileReceiver {
     }
 
     // 3. Initialize transfer record in volatile RAM
+    const fileTtl = metadata.ttlSeconds || 
+      (metadata.expiresAt && metadata.sentAt 
+        ? Math.max(5, Math.round((metadata.expiresAt - metadata.sentAt) / 1000))
+        : DEFAULT_FILE_TTL_SECONDS);
+    const localExpiresAt = Date.now() + fileTtl * 1000;
+
     const transfer = {
       fileId,
       fileName: metadata.fileName,
@@ -417,7 +424,8 @@ export class FileReceiver {
       mimeType: metadata.mimeType || 'application/octet-stream',
       totalChunks: metadata.totalChunks,
       sentAt: metadata.sentAt || Date.now(),
-      expiresAt: metadata.expiresAt || (Date.now() + DEFAULT_FILE_TTL_SECONDS * 1000),
+      ttlSeconds: fileTtl,
+      expiresAt: localExpiresAt,
       burnOnRead: Boolean(metadata.burnOnRead),
       burnDelay: metadata.burnDelay || BURN_ON_READ_DELAY_SECONDS,
       receivedChunks: new Map(), // chunkIndex -> Uint8Array
@@ -436,6 +444,7 @@ export class FileReceiver {
       mimeType: transfer.mimeType,
       totalChunks: transfer.totalChunks,
       sentAt: transfer.sentAt,
+      ttlSeconds: transfer.ttlSeconds,
       expiresAt: transfer.expiresAt,
       burnOnRead: transfer.burnOnRead,
       burnDelay: transfer.burnDelay,

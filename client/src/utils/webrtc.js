@@ -635,18 +635,28 @@ export class PeerSession {
               id: payload.id || `${Date.now()}`,
               text: decryptedText,
               sentAt: payload.timestamp || Date.now(),
-              expiresAt: (payload.timestamp || Date.now()) + DEFAULT_TTL_SECONDS * 1000,
+              ttlSeconds: DEFAULT_TTL_SECONDS,
               burnOnRead: false,
               burnDelay: 5,
             };
           }
+
+          // Calculate local expiration based on receiver's clock + TTL duration
+          // This eliminates device clock skew (e.g. mobile vs laptop clock drift)
+          const ttlSeconds = innerPayload.ttlSeconds || 
+            (innerPayload.expiresAt && innerPayload.sentAt 
+              ? Math.max(5, Math.round((innerPayload.expiresAt - innerPayload.sentAt) / 1000))
+              : DEFAULT_TTL_SECONDS);
+
+          const localExpiresAt = Date.now() + ttlSeconds * 1000;
 
           // Deliver authenticated plaintext & expiry metadata to UI
           this.callbacks.onMessageReceived({
             id: innerPayload.id || payload.id || `${Date.now()}`,
             text: innerPayload.text,
             sentAt: innerPayload.sentAt || payload.timestamp || Date.now(),
-            expiresAt: innerPayload.expiresAt || (Date.now() + DEFAULT_TTL_SECONDS * 1000),
+            ttlSeconds,
+            expiresAt: localExpiresAt,
             burnOnRead: Boolean(innerPayload.burnOnRead),
             burnDelay: innerPayload.burnDelay || 5,
             sender: 'peer',
@@ -655,11 +665,13 @@ export class PeerSession {
           });
         } else {
           // Fallback unencrypted raw payload
+          const rawTtl = payload.ttlSeconds || DEFAULT_TTL_SECONDS;
           this.callbacks.onMessageReceived({
             id: payload.id || `${Date.now()}`,
             text: payload.text || event.data,
             sentAt: payload.timestamp || Date.now(),
-            expiresAt: Date.now() + DEFAULT_TTL_SECONDS * 1000,
+            ttlSeconds: rawTtl,
+            expiresAt: Date.now() + rawTtl * 1000,
             burnOnRead: false,
             sender: 'peer',
             timestamp: payload.timestamp || Date.now(),
