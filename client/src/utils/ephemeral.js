@@ -22,9 +22,9 @@
  */
 
 export const DEFAULT_TTL_SECONDS = 60;
-export const DEFAULT_FILE_TTL_SECONDS = 180; // 3 minutes default for files
-export const BURN_ON_READ_DELAY_SECONDS = 5;
-export const BACKGROUND_BLUR_PURGE_TIMEOUT_MS = 30000; // 30 seconds of tab blur triggers memory purge
+export const DEFAULT_FILE_TTL_SECONDS = 300; // 5 minutes default for files
+export const BURN_ON_READ_DELAY_SECONDS = 15; // 15 seconds burn countdown for media
+export const BACKGROUND_BLUR_PURGE_TIMEOUT_MS = 180000; // 3 minutes grace period for mobile app switches (gallery/camera)
 
 export const FILE_TTL_OPTIONS = [
   { label: '60s', seconds: 60 },

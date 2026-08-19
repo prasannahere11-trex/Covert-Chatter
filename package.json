@@ -1,0 +1,24 @@
+{
+  "name": "covert-chatter",
+  "version": "1.0.0",
+  "description": "Zero-knowledge ephemeral WebRTC communication platform with end-to-end encryption",
+  "scripts": {
+    "install:all": "npm --prefix client install && npm --prefix server install",
+    "build": "npm --prefix client install && npm --prefix client run build && npm --prefix server install",
+    "start": "node server/server.js",
+    "dev:server": "npm --prefix server start",
+    "dev:client": "npm --prefix client run dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "webrtc",
+    "encryption",
+    "ephemeral",
+    "e2ee",
+    "zero-knowledge",
+    "privacy"
+  ],
+  "license": "MIT"
+}

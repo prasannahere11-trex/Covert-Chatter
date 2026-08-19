@@ -96,6 +96,7 @@ export default function ConnectRoom({
   const [fileBurnOnRead, setFileBurnOnRead] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isSendingFile, setIsSendingFile] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null); // Lightbox photo preview state
 
   // Connection Quality State ('direct' | 'relay' | null)
   const [connectionType, setConnectionType] = useState(null);
@@ -178,7 +179,23 @@ export default function ConnectRoom({
     return () => clearInterval(timer);
   }, []);
 
-  // Burn-on-Read: Activate countdown when recipient first renders the message
+  // Trigger burn on file interaction (opening preview or downloading)
+  const handleTriggerFileBurn = (msgId) => {
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id === msgId && msg.burnOnRead && !msg.burnDeadline) {
+          return {
+            ...msg,
+            renderedAt: Date.now(),
+            burnDeadline: Date.now() + (msg.burnDelay || BURN_ON_READ_DELAY_SECONDS) * 1000,
+          };
+        }
+        return msg;
+      })
+    );
+  };
+
+  // Burn-on-Read: Activate countdown for text messages when rendered
   useEffect(() => {
     setMessages((prev) => {
       let updated = false;
@@ -186,7 +203,8 @@ export default function ConnectRoom({
 
       const next = prev.map((msg) => {
         if (msg.sender === 'peer' && msg.burnOnRead && !msg.burnDeadline) {
-          if (!msg.type || msg.type === 'text' || (msg.type === 'file' && msg.status === 'completed')) {
+          // For text messages, trigger on render
+          if (!msg.type || msg.type === 'text') {
             updated = true;
             return {
               ...msg,
@@ -202,10 +220,25 @@ export default function ConnectRoom({
     });
   }, [messages]);
 
+  const isSelectingFileRef = useRef(false);
+
+  const handleOpenFilePicker = () => {
+    isSelectingFileRef.current = true;
+    fileInputRef.current?.click();
+    // Keep flag true for up to 2 minutes while user browses mobile file manager
+    setTimeout(() => {
+      isSelectingFileRef.current = false;
+    }, 120000);
+  };
+
   // Anti-Persistence Guard: Window Blur & Tab Close Auto-Purge
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        if (isSelectingFileRef.current) {
+          console.log('[Mobile] File picker active, skipping background blur purge.');
+          return;
+        }
         blurTimerRef.current = setTimeout(() => {
           if (sessionRef.current) {
             sessionRef.current.cleanup(true);
@@ -215,7 +248,7 @@ export default function ConnectRoom({
           setAttachedFile(null);
           setStatus('disconnected');
           setStatusDetails({
-            message: 'Session wiped: Inactive for over 30 seconds.',
+            message: 'Session wiped: Inactive for over 3 minutes.',
           });
         }, BACKGROUND_BLUR_PURGE_TIMEOUT_MS);
       } else {
@@ -227,6 +260,10 @@ export default function ConnectRoom({
     };
 
     const handleBeforeUnload = () => {
+      if (isSelectingFileRef.current) {
+        // Mobile Android Chrome fires beforeunload speculatively when opening native file manager
+        return;
+      }
       if (sessionRef.current) {
         sessionRef.current.cleanup(false);
       }
@@ -243,7 +280,7 @@ export default function ConnectRoom({
       if (blurTimerRef.current) {
         clearTimeout(blurTimerRef.current);
       }
-      if (sessionRef.current) {
+      if (sessionRef.current && !isSelectingFileRef.current) {
         sessionRef.current.cleanup();
       }
       stopCameraScanner();
@@ -1221,27 +1258,8 @@ export default function ConnectRoom({
                           <div className="bubble-mine">
                             {isFile ? (
                               <div className="space-y-2 min-w-[200px] sm:min-w-[240px]">
-                                <div className="flex items-start gap-2.5">
-                                  <div className="p-2 rounded-xl bg-black/15 text-[#121212] shrink-0">
-                                    {msg.status === 'completed' ? (
-                                      <FileText className="w-4.5 h-4.5" />
-                                    ) : (
-                                      <Loader2 className="w-4.5 h-4.5 animate-spin" />
-                                    )}
-                                  </div>
-
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs sm:text-sm font-bold text-[#121212] truncate" title={msg.fileName}>
-                                      {msg.fileName}
-                                    </p>
-                                    <span className="text-[10px] text-[#121212]/75 font-mono">
-                                      {formatFileSize(msg.fileSize)}
-                                    </span>
-                                  </div>
-                                </div>
-
                                 {msg.status !== 'completed' ? (
-                                  <div className="space-y-1 pt-1">
+                                  <div className="space-y-1.5 pt-1">
                                     <div className="flex items-center justify-between text-[10px] text-[#121212]/75 font-mono">
                                       <span>{msg.status === 'receiving' ? 'Receiving...' : 'Sending...'}</span>
                                       <span>{msg.progress || 0}%</span>
@@ -1253,18 +1271,68 @@ export default function ConnectRoom({
                                       />
                                     </div>
                                   </div>
-                                ) : msg.blobUrl ? (
-                                  <div className="pt-1">
-                                    <a
-                                      href={msg.blobUrl}
-                                      download={msg.fileName}
-                                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#121212] text-white hover:bg-black transition-all shadow-md"
+                                ) : msg.blobUrl && msg.mimeType?.startsWith('image/') ? (
+                                  /* Inline Photo Preview */
+                                  <div className="space-y-1.5">
+                                    <div 
+                                      className="rounded-xl overflow-hidden bg-black/20 border border-black/10 cursor-pointer max-h-56 max-w-xs group relative"
+                                      onClick={() => {
+                                        setPreviewImage({ url: msg.blobUrl, name: msg.fileName, size: msg.fileSize, id: msg.id });
+                                        handleTriggerFileBurn(msg.id);
+                                      }}
                                     >
-                                      <Download className="w-3 h-3 text-[#D4FF27]" />
-                                      <span>Download</span>
-                                    </a>
+                                      <img
+                                        src={msg.blobUrl}
+                                        alt={msg.fileName}
+                                        className="w-full h-auto max-h-56 object-cover rounded-xl group-hover:scale-[1.02] transition-transform duration-200"
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2 pt-0.5">
+                                      <span className="text-[10px] font-mono text-[#121212]/75 truncate max-w-[130px]">
+                                        {msg.fileName}
+                                      </span>
+                                      <a
+                                        href={msg.blobUrl}
+                                        download={msg.fileName}
+                                        onClick={() => handleTriggerFileBurn(msg.id)}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#121212] text-white hover:bg-black transition-all shadow-xs"
+                                      >
+                                        <Download className="w-2.5 h-2.5 text-[#D4FF27]" />
+                                        <span>Save</span>
+                                      </a>
+                                    </div>
                                   </div>
-                                ) : null}
+                                ) : (
+                                  /* Standard File Card */
+                                  <div className="space-y-2">
+                                    <div className="flex items-start gap-2.5">
+                                      <div className="p-2 rounded-xl bg-black/15 text-[#121212] shrink-0">
+                                        <FileText className="w-4.5 h-4.5" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs sm:text-sm font-bold text-[#121212] truncate" title={msg.fileName}>
+                                          {msg.fileName}
+                                        </p>
+                                        <span className="text-[10px] text-[#121212]/75 font-mono">
+                                          {formatFileSize(msg.fileSize)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {msg.blobUrl && (
+                                      <div className="pt-0.5">
+                                        <a
+                                          href={msg.blobUrl}
+                                          download={msg.fileName}
+                                          onClick={() => handleTriggerFileBurn(msg.id)}
+                                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#121212] text-white hover:bg-black transition-all shadow-md"
+                                        >
+                                          <Download className="w-3 h-3 text-[#D4FF27]" />
+                                          <span>Download</span>
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <p className="text-[15px] sm:text-[16px] leading-relaxed font-normal whitespace-pre-wrap text-[#121212] m-0">
@@ -1303,27 +1371,8 @@ export default function ConnectRoom({
                             <div className="bubble-peer">
                               {isFile ? (
                                 <div className="space-y-2 min-w-[200px] sm:min-w-[240px]">
-                                  <div className="flex items-start gap-2.5">
-                                    <div className="p-2 rounded-xl bg-black/15 text-[#121212] shrink-0">
-                                      {msg.status === 'completed' ? (
-                                        <FileText className="w-4.5 h-4.5" />
-                                      ) : (
-                                        <Loader2 className="w-4.5 h-4.5 animate-spin" />
-                                      )}
-                                    </div>
-
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs sm:text-sm font-bold text-[#121212] truncate" title={msg.fileName}>
-                                        {msg.fileName}
-                                      </p>
-                                      <span className="text-[10px] text-[#121212]/75 font-mono">
-                                        {formatFileSize(msg.fileSize)}
-                                      </span>
-                                    </div>
-                                  </div>
-
                                   {msg.status !== 'completed' ? (
-                                    <div className="space-y-1 pt-1">
+                                    <div className="space-y-1.5 pt-1">
                                       <div className="flex items-center justify-between text-[10px] text-[#121212]/75 font-mono">
                                         <span>Receiving...</span>
                                         <span>{msg.progress || 0}%</span>
@@ -1335,18 +1384,68 @@ export default function ConnectRoom({
                                         />
                                       </div>
                                     </div>
-                                  ) : msg.blobUrl ? (
-                                    <div className="pt-1">
-                                      <a
-                                        href={msg.blobUrl}
-                                        download={msg.fileName}
-                                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#121212] text-white hover:bg-black transition-all shadow-md"
+                                  ) : msg.blobUrl && msg.mimeType?.startsWith('image/') ? (
+                                    /* Inline Photo Preview for Peer */
+                                    <div className="space-y-1.5">
+                                      <div 
+                                        className="rounded-xl overflow-hidden bg-black/20 border border-black/10 cursor-pointer max-h-56 max-w-xs group relative"
+                                        onClick={() => {
+                                          setPreviewImage({ url: msg.blobUrl, name: msg.fileName, size: msg.fileSize, id: msg.id });
+                                          handleTriggerFileBurn(msg.id);
+                                        }}
                                       >
-                                        <Download className="w-3 h-3 text-[#E8F5E1]" />
-                                        <span>Download</span>
-                                      </a>
+                                        <img
+                                          src={msg.blobUrl}
+                                          alt={msg.fileName}
+                                          className="w-full h-auto max-h-56 object-cover rounded-xl group-hover:scale-[1.02] transition-transform duration-200"
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                                        <span className="text-[10px] font-mono text-[#121212]/75 truncate max-w-[130px]">
+                                          {msg.fileName}
+                                        </span>
+                                        <a
+                                          href={msg.blobUrl}
+                                          download={msg.fileName}
+                                          onClick={() => handleTriggerFileBurn(msg.id)}
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#121212] text-white hover:bg-black transition-all shadow-xs"
+                                        >
+                                          <Download className="w-2.5 h-2.5 text-[#E8F5E1]" />
+                                          <span>Save</span>
+                                        </a>
+                                      </div>
                                     </div>
-                                  ) : null}
+                                  ) : (
+                                    /* Standard File Card for Peer */
+                                    <div className="space-y-2">
+                                      <div className="flex items-start gap-2.5">
+                                        <div className="p-2 rounded-xl bg-black/15 text-[#121212] shrink-0">
+                                          <FileText className="w-4.5 h-4.5" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs sm:text-sm font-bold text-[#121212] truncate" title={msg.fileName}>
+                                            {msg.fileName}
+                                          </p>
+                                          <span className="text-[10px] text-[#121212]/75 font-mono">
+                                            {formatFileSize(msg.fileSize)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      {msg.blobUrl && (
+                                        <div className="pt-0.5">
+                                          <a
+                                            href={msg.blobUrl}
+                                            download={msg.fileName}
+                                            onClick={() => handleTriggerFileBurn(msg.id)}
+                                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#121212] text-white hover:bg-black transition-all shadow-md"
+                                          >
+                                            <Download className="w-3 h-3 text-[#E8F5E1]" />
+                                            <span>Download</span>
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <p className="text-[15px] sm:text-[16px] leading-relaxed font-normal whitespace-pre-wrap text-[#121212] m-0">
@@ -1434,7 +1533,7 @@ export default function ConnectRoom({
                 {/* Left: Attach icon button */}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={handleOpenFilePicker}
                   className="chat-icon-btn w-10 h-10 min-w-[40px] min-h-[40px]"
                   title="Attach File or Photo (Encrypted P2P)"
                   aria-label="Attach file"
@@ -1486,6 +1585,49 @@ export default function ConnectRoom({
           </div>
         );
       })()}
+
+      {/* Image Lightbox Preview Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div 
+            className="relative max-w-2xl w-full flex flex-col items-center gap-3 animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Bar */}
+            <div className="w-full flex items-center justify-between px-2 text-xs">
+              <span className="text-white font-bold truncate max-w-xs">{previewImage.name}</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewImage.url}
+                  download={previewImage.name}
+                  className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 rounded-full"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </a>
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="w-8 h-8 rounded-full bg-[#1C1C1C] border border-[#A8CC19]/40 text-white hover:bg-[#242424] flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Image display */}
+            <div className="rounded-2xl overflow-hidden border border-[#A8CC19]/50 bg-[#121212] shadow-2xl max-h-[75vh] flex items-center justify-center">
+              <img
+                src={previewImage.url}
+                alt={previewImage.name}
+                className="max-h-[75vh] max-w-full object-contain rounded-2xl"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

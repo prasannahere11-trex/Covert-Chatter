@@ -27,6 +27,10 @@ import { sendFileStream, FileReceiver, BUFFER_LOW_THRESHOLD } from './fileTransf
  * Resolves to ws://localhost:5173/ws locally or wss://<ngrok-host>/ws when accessed remotely.
  */
 export function getDefaultSignalingUrl() {
+  const envUrl = import.meta.env.VITE_SIGNALING_URL;
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+    return envUrl.trim();
+  }
   if (typeof window !== 'undefined' && window.location) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${window.location.host}/ws`;
@@ -275,6 +279,12 @@ export class PeerSession {
         break;
 
       case 'peer-disconnected':
+        // If the WebRTC direct P2P data channel is already open and transmitting,
+        // ignore transient signaling socket drops (e.g. mobile gallery/camera app switches)
+        if (this.dataChannel && this.dataChannel.readyState === 'open') {
+          console.log('[Signaling] Signaling peer dropped, but direct WebRTC channel remains connected.');
+          break;
+        }
         this.clearConnectionTimeout();
         this.callbacks.onStatusChange('disconnected', { message: 'Peer disconnected or closed the session.' });
         this.cleanup(false);
@@ -315,18 +325,39 @@ export class PeerSession {
       }
     };
 
-    // Monitor connection states
+    // Monitor connection states with grace period for transient mobile app/gallery switches
+    let disconnectGraceTimer = null;
+
     pc.onconnectionstatechange = () => {
       console.log('[WebRTC] Connection state:', pc.connectionState);
       if (pc.connectionState === 'connected') {
         this.clearConnectionTimeout();
+        if (disconnectGraceTimer) {
+          clearTimeout(disconnectGraceTimer);
+          disconnectGraceTimer = null;
+        }
       } else if (pc.connectionState === 'failed') {
         this.clearConnectionTimeout();
+        if (disconnectGraceTimer) {
+          clearTimeout(disconnectGraceTimer);
+          disconnectGraceTimer = null;
+        }
         this.callbacks.onStatusChange('error', {
           message: 'Connection failed — please check your network or try again.',
         });
       } else if (pc.connectionState === 'disconnected') {
-        this.callbacks.onStatusChange('disconnected', { message: 'Peer connection disconnected.' });
+        // Transient state in WebRTC (e.g. mobile user switched to file manager or camera).
+        // Wait 30 seconds for mobile ICE keepalive to resume before treating as fatal disconnect.
+        console.log('[WebRTC] Connection transiently disconnected (mobile file picker active), awaiting reconnection...');
+        if (!disconnectGraceTimer) {
+          disconnectGraceTimer = setTimeout(() => {
+            if (this.pc && (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed')) {
+              console.warn('[WebRTC] Reconnection window elapsed. Disconnecting.');
+              this.callbacks.onStatusChange('disconnected', { message: 'Peer disconnected or closed the session.' });
+              this.cleanup(false);
+            }
+          }, 30000); // 30-second mobile file picker grace period
+        }
       }
     };
 
