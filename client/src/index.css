@@ -547,6 +547,55 @@ input:focus, textarea:focus, select:focus {
 ::-webkit-scrollbar-thumb { background: #2A2A2A; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #A8CC19; }
 
+/* QR Scanner Containment & Video Normalization */
+#covert-join-qr-reader,
+#covert-qr-reader {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  position: relative !important;
+  border: none !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#covert-join-qr-reader video,
+#covert-qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 260px !important;
+  object-fit: cover !important;
+  border-radius: 0.75rem !important;
+  display: block !important;
+  position: static !important;
+}
+
+#covert-join-qr-reader canvas,
+#covert-qr-reader canvas {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  display: none !important;
+}
+
+#covert-join-qr-reader__scan_region,
+#covert-qr-reader__scan_region {
+  min-height: auto !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#covert-join-qr-reader__dashboard_section,
+#covert-qr-reader__dashboard_section,
+#covert-join-qr-reader img,
+#covert-qr-reader img {
+  display: none !important;
+}
+
 /* ========================================================================= */
 /* REFERENCE-MATCHED COMIC BUBBLE CHAT SYSTEM & SPRINGY ANIMATIONS           */
 /* ========================================================================= */

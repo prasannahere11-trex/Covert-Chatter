@@ -38,6 +38,18 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
       }
       scannerRef.current = null;
     }
+
+    const container = document.getElementById(scannerContainerId);
+    if (container) {
+      const videos = container.querySelectorAll('video');
+      videos.forEach((video) => {
+        if (video.srcObject && typeof video.srcObject.getTracks === 'function') {
+          video.srcObject.getTracks().forEach((track) => track.stop());
+        }
+      });
+      container.innerHTML = '';
+    }
+
     setIsScanning(false);
   };
 

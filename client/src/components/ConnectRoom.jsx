@@ -295,12 +295,37 @@ export default function ConnectRoom({
           await html5QrScannerRef.current.stop();
         }
         await html5QrScannerRef.current.clear();
-      } catch {}
+      } catch (err) {
+        console.warn('Error clearing scanner:', err);
+      }
       html5QrScannerRef.current = null;
     }
+
+    // Explicitly release any media stream tracks and clear container
+    const container = document.getElementById(scannerContainerId);
+    if (container) {
+      const videos = container.querySelectorAll('video');
+      videos.forEach((video) => {
+        if (video.srcObject && typeof video.srcObject.getTracks === 'function') {
+          video.srcObject.getTracks().forEach((track) => track.stop());
+        }
+      });
+      container.innerHTML = '';
+    }
+
     setIsJoinScannerOpen(false);
     setCameraError(null);
   };
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isJoinScannerOpen) {
+        stopCameraScanner();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isJoinScannerOpen]);
 
   const startCameraScanner = async () => {
     setIsJoinScannerOpen(true);
@@ -865,8 +890,16 @@ export default function ConnectRoom({
       {/* 2. CAMERA SCANNER (Dark Neon Viewfinder)                                  */}
       {/* ========================================================================= */}
       {isJoinScannerOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-[#1C1C1C] rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-[#A8CC19]/60 animate-scale-up">
+        <div 
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) stopCameraScanner();
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Scan QR Code"
+        >
+          <div className="bg-[#1C1C1C] rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-[#A8CC19]/60 animate-scale-up relative">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Camera className="w-4 h-4 text-[#D4FF27]" />
@@ -875,16 +908,17 @@ export default function ConnectRoom({
               <button
                 onClick={stopCameraScanner}
                 className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#242424]"
+                aria-label="Close scanner"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Viewfinder Frame */}
-            <div className="relative rounded-xl overflow-hidden bg-black min-h-[260px] flex items-center justify-center border border-[#A8CC19]/40">
-              <div id={scannerContainerId} className="w-full max-w-xs overflow-hidden rounded-lg" />
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="w-48 h-48 border-2 border-[#D4FF27] rounded-2xl shadow-[0_0_15px_rgba(212,255,39,0.4)]" />
+            <div className="relative rounded-xl overflow-hidden bg-black h-[260px] min-h-[260px] max-h-[260px] w-full flex items-center justify-center border border-[#A8CC19]/40">
+              <div id={scannerContainerId} className="w-full h-full overflow-hidden rounded-lg flex items-center justify-center" />
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+                <div className="w-44 h-44 border-2 border-[#D4FF27] rounded-2xl shadow-[0_0_15px_rgba(212,255,39,0.4)]" />
               </div>
             </div>
 
