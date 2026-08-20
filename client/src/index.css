@@ -377,10 +377,10 @@ code, pre, .font-mono {
 /* Box Shadows & Rings */
 .shadow-xs { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
 .shadow-sm { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1); }
-.shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2); }
-.shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3); }
-.shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4); }
-.shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85); }
+.shadow-md { box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.4), 0 3px 6px -2px rgba(0, 0, 0, 0.3); }
+.shadow-lg { box-shadow: 0 14px 28px -5px rgba(0, 0, 0, 0.7), 0 6px 10px -3px rgba(0, 0, 0, 0.45); }
+.shadow-xl { box-shadow: 0 20px 40px -6px rgba(0, 0, 0, 0.85), 0 0 20px -3px rgba(93, 214, 44, 0.12); }
+.shadow-2xl { box-shadow: 0 28px 65px -12px rgba(0, 0, 0, 0.95), 0 0 35px -5px rgba(93, 214, 44, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
 .shadow-\[0_0_8px_rgba\(93\,214\,44\,0\.25\)\], .shadow-\[0_0_8px_rgba\(212\,255\,39\,0\.25\)\] { box-shadow: 0 0 8px rgba(93, 214, 44, 0.25); }
 .shadow-\[0_0_8px_rgba\(93\,214\,44\,0\.3\)\], .shadow-\[0_0_8px_rgba\(212\,255\,39\,0\.3\)\] { box-shadow: 0 0 8px rgba(93, 214, 44, 0.3); }
 .shadow-\[0_0_8px_rgba\(93\,214\,44\,0\.35\)\], .shadow-\[0_0_8px_rgba\(212\,255\,39\,0\.35\)\] { box-shadow: 0 0 8px rgba(93, 214, 44, 0.35); }
@@ -487,17 +487,33 @@ input:focus, textarea:focus, select:focus {
 
 /* Neon Cards & Surface Panels */
 .glass-panel {
-  background-color: #202020;
-  border: 1px solid rgba(51, 116, 24, 0.4);
-  border-radius: 1.25rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  background-color: rgba(32, 32, 32, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(51, 116, 24, 0.45);
+  border-radius: 1.35rem;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.85), 0 0 25px -5px rgba(93, 214, 44, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  position: relative;
+}
+
+.glass-panel:hover {
+  border-color: rgba(51, 116, 24, 0.65);
 }
 
 .glass-nav {
-  background-color: rgba(32, 32, 32, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(32, 32, 32, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(51, 116, 24, 0.5);
+}
+
+.chat-container-responsive {
+  height: calc(100vh - 210px);
+  min-height: 520px;
+  max-height: 740px;
+  box-shadow: 0 28px 70px -12px rgba(0, 0, 0, 0.98), 0 0 35px -5px rgba(93, 214, 44, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 /* Neon Glowing Buttons */

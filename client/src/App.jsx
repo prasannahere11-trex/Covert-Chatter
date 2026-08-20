@@ -80,7 +80,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-[#0F0F0F] text-white selection:bg-[#5DD62C] selection:text-[#0F0F0F] relative overflow-x-hidden">
       {/* Animated Neon Green PixelBlast Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-35 overflow-hidden">
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-40 overflow-hidden">
         <PixelBlast
           variant="square"
           pixelSize={4}
@@ -95,6 +95,20 @@ export default function App() {
         />
       </div>
 
+      {/* Ambient Radial Vignette & Depth Mask - gives breathing room around center elements */}
+      <div 
+        className="fixed inset-0 z-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse 75% 65% at 50% 40%, rgba(15, 15, 15, 0.72) 0%, rgba(15, 15, 15, 0.94) 70%, #0F0F0F 100%)'
+        }}
+      />
+      <div 
+        className="fixed inset-0 z-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle 500px at 50% 35%, rgba(93, 214, 44, 0.07) 0%, transparent 70%)'
+        }}
+      />
+
       {/* Toast Notification Container */}
       {toast && (
         <Toast
@@ -107,7 +121,7 @@ export default function App() {
       )}
 
       {/* Top Header Navigation — Dark Charcoal with thin Forest/Moss Green accent border */}
-      <header className="glass-nav sticky top-0 z-40 px-4 sm:px-6 py-3 border-b border-[#337418]/40 bg-[#202020]/95">
+      <header className="glass-nav sticky top-0 z-40 px-4 sm:px-6 py-3 border-b border-[#337418]/40 bg-[#202020]/90 backdrop-blur-md shadow-lg">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           {/* Circular Shield Logo & App Name */}
           <div className="flex items-center gap-2.5">
@@ -134,11 +148,11 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-6 space-y-6 relative z-10">
+      {/* Main Content Area — Center-stage card presentation with breathing room */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6 relative z-10">
         {/* Fatal Error State: Browser Incompatibility */}
         {fatalError ? (
-          <div className="glass-panel p-8 rounded-2xl space-y-4 text-center max-w-xl mx-auto mt-12 animate-fade-in border-rose-500/50 bg-[#202020]">
+          <div className="glass-panel p-8 rounded-2xl space-y-4 text-center max-w-xl mx-auto mt-8 animate-fade-in border-rose-500/50 bg-[#202020]/95 shadow-2xl">
             <div className="w-12 h-12 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-500 mx-auto">
               <AlertTriangle className="w-6 h-6" />
             </div>
@@ -156,7 +170,7 @@ export default function App() {
           </div>
         ) : isLoading ? (
           /* Loading State */
-          <div className="glass-panel p-12 rounded-2xl text-center max-w-md mx-auto my-12 space-y-3 animate-pulse bg-[#202020] border-[#337418]/30">
+          <div className="glass-panel p-12 rounded-2xl text-center max-w-md mx-auto my-8 space-y-3 animate-pulse bg-[#202020]/95 border-[#337418]/30 shadow-2xl">
             <div className="w-10 h-10 rounded-xl bg-[#0F0F0F] border border-[#5DD62C] flex items-center justify-center text-[#5DD62C] mx-auto shadow-[0_0_12px_rgba(93,214,44,0.25)]">
               <RefreshCw className="w-5 h-5 animate-spin" />
             </div>
@@ -165,17 +179,17 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* Streamlined Segmented Control Navigation */}
+            {/* Streamlined Segmented Control Navigation with Elevated Shadow */}
             <div className="flex items-center justify-center">
               <nav
-                className="inline-flex p-1.5 bg-[#202020] border border-[#337418]/40 rounded-2xl max-w-full shadow-lg"
+                className="inline-flex p-1.5 bg-[#202020]/95 backdrop-blur-md border border-[#337418]/50 rounded-2xl max-w-full shadow-[0_12px_30px_-5px_rgba(0,0,0,0.8),0_0_15px_rgba(93,214,44,0.12)]"
                 aria-label="Navigation Tabs"
               >
                 <button
                   onClick={() => setActiveTab('connect')}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
                     activeTab === 'connect'
-                      ? 'bg-[#5DD62C] text-[#0F0F0F] shadow-[0_0_14px_rgba(93,214,44,0.35)]'
+                      ? 'bg-[#5DD62C] text-[#0F0F0F] shadow-[0_0_14px_rgba(93,214,44,0.4)]'
                       : 'text-slate-300 hover:text-white hover:bg-[#282828]'
                   }`}
                 >
@@ -187,7 +201,7 @@ export default function App() {
                   onClick={() => setActiveTab('my-identity')}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
                     activeTab === 'my-identity'
-                      ? 'bg-[#5DD62C] text-[#0F0F0F] shadow-[0_0_14px_rgba(93,214,44,0.35)]'
+                      ? 'bg-[#5DD62C] text-[#0F0F0F] shadow-[0_0_14px_rgba(93,214,44,0.4)]'
                       : 'text-slate-300 hover:text-white hover:bg-[#282828]'
                   }`}
                 >
@@ -197,8 +211,8 @@ export default function App() {
               </nav>
             </div>
 
-            {/* Active Tab View */}
-            <div>
+            {/* Active Tab View with Depth Elevation */}
+            <div className="relative">
               {activeTab === 'connect' && (
                 <ConnectRoom
                   myIdentity={identity}
