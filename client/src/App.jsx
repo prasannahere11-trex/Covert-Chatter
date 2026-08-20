@@ -13,6 +13,7 @@ import MyIdentity from './components/MyIdentity';
 import KeyDetails from './components/KeyDetails';
 import ConnectRoom from './components/ConnectRoom';
 import Toast from './components/Toast';
+import PixelBlast from './components/PixelBlast/PixelBlast';
 import { getOrCreateIdentity, resetIdentity } from './utils/db';
 
 export default function App() {
@@ -77,7 +78,23 @@ export default function App() {
   }, [showKeyDetailsModal]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#121212] text-white selection:bg-[#D4FF27] selection:text-[#121212]">
+    <div className="min-h-screen flex flex-col bg-[#121212] text-white selection:bg-[#D4FF27] selection:text-[#121212] relative overflow-x-hidden">
+      {/* Animated Neon Green PixelBlast Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-35 overflow-hidden">
+        <PixelBlast
+          variant="square"
+          pixelSize={4}
+          color="#D4FF27"
+          patternScale={2.5}
+          patternDensity={0.7}
+          pixelSizeJitter={0.2}
+          enableRipples={false}
+          speed={0.35}
+          edgeFade={0.15}
+          transparent={true}
+        />
+      </div>
+
       {/* Toast Notification Container */}
       {toast && (
         <Toast
@@ -118,7 +135,7 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-6 space-y-6 relative z-10">
         {/* Fatal Error State: Browser Incompatibility */}
         {fatalError ? (
           <div className="glass-panel p-8 rounded-2xl space-y-4 text-center max-w-xl mx-auto mt-12 animate-fade-in border-rose-500/50 bg-[#1C1C1C]">

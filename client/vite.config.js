@@ -24,6 +24,7 @@ export default defineConfig({
           'vendor-react': ['react', 'react-dom'],
           'vendor-qr': ['html5-qrcode', 'qrcode.react'],
           'vendor-icons': ['lucide-react'],
+          'vendor-three': ['three', 'postprocessing'],
         },
       },
     },

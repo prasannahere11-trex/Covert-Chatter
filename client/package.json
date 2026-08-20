@@ -11,9 +11,11 @@
   "dependencies": {
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^1.16.0",
+    "postprocessing": "^6.39.4",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@vitejs/plugin-basic-ssl": "^2.3.0",
