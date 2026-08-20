@@ -1348,13 +1348,13 @@ export default function ConnectRoom({
                     return (
                       <div
                         key={msg.id}
-                        className={`flex items-start gap-2.5 animate-bubble-pop ${
+                        className={`flex items-end gap-2.5 animate-bubble-pop ${
                           remainingSecs <= 2 ? 'opacity-40 transition-opacity' : 'opacity-100'
                         }`}
                       >
-                        {/* Peer Avatar */}
+                        {/* Peer Avatar (Aligned to baseline) */}
                         <div 
-                          className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-full border border-[#A8CC19] bg-[#1C1C1C] text-[#E8F5E1] font-bold text-xs flex items-center justify-center font-mono select-none shrink-0 mt-3"
+                          className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-full border border-[#A8CC19] bg-[#1C1C1C] text-[#E8F5E1] font-bold text-xs flex items-center justify-center font-mono select-none shrink-0"
                           title={verifiedPeer?.fingerprint || 'Peer'}
                         >
                           {peerInitials}
@@ -1542,7 +1542,7 @@ export default function ConnectRoom({
                 </button>
 
                 {/* Text input: #121212 bg, #A8CC19 border, white text, rounded pill shape */}
-                <div className="flex-1 bg-[#121212] border border-[#A8CC19] focus-within:border-[#D4FF27] focus-within:shadow-[0_0_10px_rgba(212,255,39,0.2)] rounded-full px-4 py-1.5 transition-all flex items-center">
+                <div className="flex-1 bg-[#121212] border border-[#A8CC19] focus-within:border-[#D4FF27] focus-within:shadow-[0_0_10px_rgba(212,255,39,0.2)] rounded-full px-4 h-10 transition-all flex items-center">
                   <input
                     type="text"
                     value={inputText}

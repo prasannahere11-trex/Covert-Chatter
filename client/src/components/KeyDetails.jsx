@@ -118,7 +118,7 @@ export default function KeyDetails({ identity, onShowToast }) {
             </button>
           </div>
 
-          <pre className="p-3 bg-[#121212] border border-[#A8CC19]/40 rounded-xl text-[11px] font-mono text-[#D4FF27] overflow-x-auto select-all leading-relaxed">
+          <pre className="p-3 bg-[#121212] border border-[#A8CC19]/40 rounded-xl text-[11px] font-mono text-[#D4FF27] overflow-x-auto max-h-60 select-all leading-relaxed">
             {ecdsaFormatted}
           </pre>
         </div>
@@ -148,7 +148,7 @@ export default function KeyDetails({ identity, onShowToast }) {
             </button>
           </div>
 
-          <pre className="p-3 bg-[#121212] border border-[#A8CC19]/40 rounded-xl text-[11px] font-mono text-[#D4FF27] overflow-x-auto select-all leading-relaxed">
+          <pre className="p-3 bg-[#121212] border border-[#A8CC19]/40 rounded-xl text-[11px] font-mono text-[#D4FF27] overflow-x-auto max-h-60 select-all leading-relaxed">
             {ecdhFormatted}
           </pre>
         </div>

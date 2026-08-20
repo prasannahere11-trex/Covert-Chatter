@@ -146,12 +146,12 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
 
             {/* Fingerprint Box */}
             <div className="bg-[#121212] border border-[#A8CC19]/50 rounded-xl p-3 relative group">
-              <div className="font-mono text-[#D4FF27] font-semibold text-xs sm:text-sm tracking-wider break-all select-all">
+              <div className="font-mono text-[#D4FF27] font-semibold text-xs sm:text-sm tracking-wider break-all select-all pr-12">
                 {identity.fingerprint}
               </div>
               <button
                 onClick={() => handleCopy(identity.fingerprint, 'fingerprint', 'Fingerprint copied')}
-                className="absolute right-2.5 top-2.5 p-1 rounded-md bg-[#1C1C1C] border border-[#A8CC19]/50 text-slate-300 hover:text-[#D4FF27] shadow-xs"
+                className="absolute right-2.5 top-2.5 p-1.5 rounded-lg bg-[#1C1C1C] border border-[#A8CC19]/50 text-slate-300 hover:text-[#D4FF27] shadow-xs cursor-pointer transition-colors"
                 title="Copy Fingerprint"
               >
                 {copiedField === 'fingerprint' ? (

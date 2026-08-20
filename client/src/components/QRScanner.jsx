@@ -327,12 +327,12 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
               Peer SHA-256 Fingerprint
             </label>
             <div className="bg-[#121212] border border-[#A8CC19]/50 rounded-xl p-3 relative group">
-              <div className="font-mono text-[#D4FF27] font-semibold text-xs sm:text-sm tracking-wider break-all select-all">
+              <div className="font-mono text-[#D4FF27] font-semibold text-xs sm:text-sm tracking-wider break-all select-all pr-12">
                 {scannedPeer.fingerprint}
               </div>
               <button
                 onClick={handleCopyPeerFingerprint}
-                className="absolute right-2.5 top-2.5 p-1 rounded-md bg-[#1C1C1C] border border-[#A8CC19]/50 text-slate-300 hover:text-[#D4FF27] shadow-xs"
+                className="absolute right-2.5 top-2.5 p-1.5 rounded-lg bg-[#1C1C1C] border border-[#A8CC19]/50 text-slate-300 hover:text-[#D4FF27] shadow-xs cursor-pointer transition-colors"
                 title="Copy Fingerprint"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-[#D4FF27]" /> : <Copy className="w-3.5 h-3.5" />}
