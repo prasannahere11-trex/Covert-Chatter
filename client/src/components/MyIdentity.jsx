@@ -210,7 +210,16 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isRegenerating) {
+              setShowConfirmModal(false);
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
           <div className="bg-[#1C1C1C] border border-[#A8CC19]/50 max-w-sm w-full p-5 rounded-2xl space-y-4 shadow-2xl animate-scale-up">
             <div className="flex items-center gap-2.5 text-rose-400">
               <AlertTriangle className="w-5 h-5" />

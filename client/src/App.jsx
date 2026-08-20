@@ -225,7 +225,7 @@ export default function App() {
       {/* Key Details Modal Overlay */}
       {showKeyDetailsModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowKeyDetailsModal(false);
