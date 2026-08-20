@@ -220,11 +220,11 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
       />
 
       {!scannedPeer ? (
-        <div className="glass-panel p-6 sm:p-8 space-y-5 bg-[#1C1C1C] border-[#A8CC19]/40">
+        <div className="glass-panel p-6 sm:p-8 space-y-5 bg-[#202020] border-[#337418]/40">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Camera className="w-4 h-4 text-[#D4FF27]" />
+                <Camera className="w-4 h-4 text-[#5DD62C]" />
                 Scan Peer Identity
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -246,7 +246,7 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
                 disabled={isProcessingFile}
                 className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
               >
-                <FileImage className="w-3.5 h-3.5 text-[#A8CC19]" />
+                <FileImage className="w-3.5 h-3.5 text-[#5DD62C]" />
                 <span>{isProcessingFile ? 'Reading...' : 'Upload Image'}</span>
               </button>
 
@@ -271,12 +271,12 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
           </div>
 
           {/* Viewfinder Container */}
-          <div className="relative rounded-2xl overflow-hidden bg-black min-h-[300px] flex items-center justify-center border border-[#A8CC19]/40">
+          <div className="relative rounded-2xl overflow-hidden bg-black min-h-[300px] flex items-center justify-center border border-[#337418]/40">
             <div id={scannerContainerId} className="w-full max-w-sm overflow-hidden rounded-xl" />
 
             {!isScanning && (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-black/90 gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#1C1C1C] border border-[#D4FF27] flex items-center justify-center text-[#D4FF27] shadow-[0_0_12px_rgba(212,255,39,0.25)]">
+                <div className="w-12 h-12 rounded-2xl bg-[#202020] border border-[#5DD62C] flex items-center justify-center text-[#5DD62C] shadow-[0_0_12px_rgba(93,214,44,0.25)]">
                   <Camera className="w-6 h-6" />
                 </div>
                 <p className="text-xs text-slate-300">
@@ -300,10 +300,10 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
         </div>
       ) : (
         /* Scanned Peer Verification Card */
-        <div className="glass-panel p-6 sm:p-8 space-y-5 bg-[#1C1C1C] border-[#A8CC19]/50">
+        <div className="glass-panel p-6 sm:p-8 space-y-5 bg-[#202020] border-[#337418]/50">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-[#121212] border border-[#D4FF27] rounded-xl text-[#D4FF27] shadow-[0_0_10px_rgba(212,255,39,0.2)]">
+              <div className="p-2.5 bg-[#0F0F0F] border border-[#5DD62C] rounded-xl text-[#5DD62C] shadow-[0_0_10px_rgba(93,214,44,0.2)]">
                 <UserCheck className="w-5 h-5" />
               </div>
               <div>
@@ -327,7 +327,7 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
                 onClick={handleResetScan}
                 className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-[#A8CC19]" />
+                <RotateCcw className="w-3.5 h-3.5 text-[#5DD62C]" />
                 <span>Scan Another</span>
               </button>
             </div>
@@ -338,16 +338,16 @@ export default function QRScanner({ onShowToast, onPeerVerified, onNavigateToCon
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Peer SHA-256 Fingerprint
             </label>
-            <div className="bg-[#121212] border border-[#A8CC19]/50 rounded-xl p-3 relative group">
-              <div className="font-mono text-[#D4FF27] font-semibold text-xs sm:text-sm tracking-wider break-all select-all pr-12">
+            <div className="bg-[#0F0F0F] border border-[#337418]/50 rounded-xl p-3 relative group">
+              <div className="font-mono text-[#5DD62C] font-semibold text-xs sm:text-sm tracking-wider break-all select-all pr-12">
                 {scannedPeer.fingerprint}
               </div>
               <button
                 onClick={handleCopyPeerFingerprint}
-                className="absolute right-2.5 top-2.5 p-1.5 rounded-lg bg-[#1C1C1C] border border-[#A8CC19]/50 text-slate-300 hover:text-[#D4FF27] shadow-xs cursor-pointer transition-colors"
+                className="absolute right-2.5 top-2.5 p-1.5 rounded-lg bg-[#202020] border border-[#337418]/50 text-slate-300 hover:text-[#5DD62C] shadow-xs cursor-pointer transition-colors"
                 title="Copy Fingerprint"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-[#D4FF27]" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-[#5DD62C]" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
           </div>

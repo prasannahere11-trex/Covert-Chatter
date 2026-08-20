@@ -684,13 +684,13 @@ export default function ConnectRoom({
       {/* Top Subtle Config Bar */}
       <div className="flex items-center justify-between text-xs text-slate-400 px-1">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-[#D4FF27] shadow-[0_0_8px_rgba(212,255,39,0.6)]" />
+          <div className="w-2 h-2 rounded-full bg-[#5DD62C] shadow-[0_0_8px_rgba(93,214,44,0.6)]" />
           <span className="font-semibold text-white">Peer-to-Peer Tunnel</span>
         </div>
 
         <button
           onClick={() => setShowServerConfig(!showServerConfig)}
-          className="text-[11px] text-[#A8CC19] hover:text-[#D4FF27] flex items-center gap-1 transition-colors py-1 px-2 rounded-lg hover:bg-[#1C1C1C]"
+          className="text-[11px] text-[#5DD62C] hover:text-[#6DE73B] flex items-center gap-1 transition-colors py-1 px-2 rounded-lg hover:bg-[#202020]"
         >
           <Server className="w-3 h-3" />
           <span>Server config</span>
@@ -699,7 +699,7 @@ export default function ConnectRoom({
       </div>
 
       {showServerConfig && (
-        <div className="p-4 bg-[#1C1C1C] border border-[#A8CC19]/40 rounded-2xl space-y-3 text-xs shadow-xl animate-slide-up">
+        <div className="p-4 bg-[#202020] border border-[#337418]/40 rounded-2xl space-y-3 text-xs shadow-xl animate-slide-up">
           <div className="flex items-center justify-between">
             <span className="font-bold text-white">Signaling Server URL</span>
             <span className="text-[11px] text-slate-400 font-mono">Default: {getDefaultSignalingUrl()}</span>
@@ -711,7 +711,7 @@ export default function ConnectRoom({
               onChange={(e) => setCustomServerUrl(e.target.value)}
               disabled={status !== 'idle' && status !== 'disconnected' && status !== 'error'}
               placeholder={getDefaultSignalingUrl()}
-              className="flex-1 bg-[#121212] border border-[#A8CC19]/50 focus:border-[#D4FF27] rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 font-mono"
+              className="flex-1 bg-[#0F0F0F] border border-[#337418]/50 focus:border-[#5DD62C] rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 font-mono"
             />
             <button
               onClick={() => setCustomServerUrl(getDefaultSignalingUrl())}
@@ -730,14 +730,14 @@ export default function ConnectRoom({
         <div className="space-y-5">
           {/* Reconnect Banner if peer is remembered in session */}
           {savedPeer && (
-            <div className="glass-panel p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-[#A8CC19]/50 bg-[#1C1C1C] shadow-lg">
+            <div className="glass-panel p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-[#337418]/50 bg-[#202020] shadow-lg">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-[#121212] border border-[#D4FF27] text-[#D4FF27] shadow-[0_0_10px_rgba(212,255,39,0.25)]">
+                <div className="p-2.5 rounded-xl bg-[#0F0F0F] border border-[#5DD62C] text-[#5DD62C] shadow-[0_0_10px_rgba(93,214,44,0.25)]">
                   <UserCheck className="w-4 h-4" />
                 </div>
                 <div>
                   <p className="text-xs font-bold text-white">Paired Peer</p>
-                  <p className="text-xs text-[#A8CC19] font-mono">
+                  <p className="text-xs text-[#5DD62C] font-mono">
                     {savedPeer.fingerprint.slice(0, 16)}...
                   </p>
                 </div>
@@ -765,9 +765,9 @@ export default function ConnectRoom({
           {/* Clean 2-Card Pairing Action Hub */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Start Chat Card */}
-            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-[#D4FF27]/60 hover:shadow-[0_0_20px_rgba(212,255,39,0.15)] transition-all bg-[#1C1C1C]">
+            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-[#5DD62C]/60 hover:shadow-[0_0_20px_rgba(93,214,44,0.15)] transition-all bg-[#202020]">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#121212] border border-[#D4FF27] flex items-center justify-center text-[#D4FF27] shadow-[0_0_12px_rgba(212,255,39,0.25)]">
+                <div className="w-12 h-12 rounded-2xl bg-[#0F0F0F] border border-[#5DD62C] flex items-center justify-center text-[#5DD62C] shadow-[0_0_12px_rgba(93,214,44,0.25)]">
                   <QrCode className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-bold text-white">Start Chat</h3>
@@ -786,9 +786,9 @@ export default function ConnectRoom({
             </div>
 
             {/* Join Chat Card */}
-            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-[#D4FF27]/60 hover:shadow-[0_0_20px_rgba(212,255,39,0.15)] transition-all bg-[#1C1C1C]">
+            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-[#5DD62C]/60 hover:shadow-[0_0_20px_rgba(93,214,44,0.15)] transition-all bg-[#202020]">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#121212] border border-[#A8CC19] flex items-center justify-center text-[#A8CC19]">
+                <div className="w-12 h-12 rounded-2xl bg-[#0F0F0F] border border-[#337418] flex items-center justify-center text-[#5DD62C]">
                   <Camera className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-bold text-white">Join Chat</h3>
@@ -801,7 +801,7 @@ export default function ConnectRoom({
                 onClick={() => startCameraScanner()}
                 className="btn-secondary w-full py-3 text-sm font-bold flex items-center justify-center gap-2"
               >
-                <Camera className="w-4 h-4 text-[#A8CC19]" />
+                <Camera className="w-4 h-4 text-[#5DD62C]" />
                 <span>Join Chat (Scan QR)</span>
               </button>
             </div>
@@ -812,22 +812,22 @@ export default function ConnectRoom({
             <button
               type="button"
               onClick={() => setShowManualPeerInput(!showManualPeerInput)}
-              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl border border-[#A8CC19]/40 hover:border-[#D4FF27] bg-[#1C1C1C] hover:bg-[#242424] text-slate-300 hover:text-white text-xs sm:text-sm font-medium shadow-md transition-all active:scale-[0.98] touch-manipulation focus:outline-none focus-visible:ring-1 focus-visible:ring-[#D4FF27]"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl border border-[#337418]/40 hover:border-[#5DD62C] bg-[#202020] hover:bg-[#282828] text-slate-300 hover:text-white text-xs sm:text-sm font-medium shadow-md transition-all active:scale-[0.98] touch-manipulation focus:outline-none focus-visible:ring-1 focus-visible:ring-[#5DD62C]"
               aria-expanded={showManualPeerInput}
             >
-              <FileCode className="w-4 h-4 text-[#A8CC19]" />
+              <FileCode className="w-4 h-4 text-[#5DD62C]" />
               <span>Enter room code or paste JSON manually</span>
               {showManualPeerInput ? (
-                <ChevronUp className="w-4 h-4 text-[#A8CC19] ml-0.5" />
+                <ChevronUp className="w-4 h-4 text-[#5DD62C] ml-0.5" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-[#A8CC19] ml-0.5" />
+                <ChevronDown className="w-4 h-4 text-[#5DD62C] ml-0.5" />
               )}
             </button>
           </div>
 
           {showManualPeerInput && (
-            <div className="glass-panel p-5 space-y-4 max-w-md mx-auto animate-slide-up bg-[#1C1C1C] border-[#A8CC19]/50">
-              <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-2">
+            <div className="glass-panel p-5 space-y-4 max-w-md mx-auto animate-slide-up bg-[#202020] border-[#337418]/50">
+              <div className="flex items-center justify-between border-b border-[#303030] pb-2">
                 <span className="text-xs font-bold text-white">Manual Room Connect</span>
                 <button
                   onClick={() => setShowManualPeerInput(false)}
@@ -848,7 +848,7 @@ export default function ConnectRoom({
                     value={joinInput}
                     onChange={(e) => setJoinInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                     placeholder="E.G. ABC123"
-                    className="flex-1 bg-[#121212] border border-[#A8CC19]/50 focus:border-[#D4FF27] rounded-xl px-3 py-2 font-mono text-center text-sm font-bold tracking-widest text-[#D4FF27] uppercase"
+                    className="flex-1 bg-[#0F0F0F] border border-[#337418]/50 focus:border-[#5DD62C] rounded-xl px-3 py-2 font-mono text-center text-sm font-bold tracking-widest text-[#5DD62C] uppercase"
                   />
                   <button
                     onClick={() => handleDirectJoinRoom(joinInput)}
@@ -860,7 +860,7 @@ export default function ConnectRoom({
                 </div>
               </div>
 
-              <form onSubmit={handleManualPeerValidate} className="space-y-2 pt-2 border-t border-[#2A2A2A]">
+              <form onSubmit={handleManualPeerValidate} className="space-y-2 pt-2 border-t border-[#303030]">
                 <label className="text-[11px] font-medium text-slate-400 block">
                   Or Paste Raw Peer Identity JSON:
                 </label>
@@ -869,7 +869,7 @@ export default function ConnectRoom({
                   value={rawPeerJsonInput}
                   onChange={(e) => setRawPeerJsonInput(e.target.value)}
                   placeholder='{"protocol":"covert-chatter",...}'
-                  className="w-full bg-[#121212] border border-[#A8CC19]/50 focus:border-[#D4FF27] rounded-xl p-2.5 text-xs font-mono text-white placeholder:text-slate-600"
+                  className="w-full bg-[#0F0F0F] border border-[#337418]/50 focus:border-[#5DD62C] rounded-xl p-2.5 text-xs font-mono text-white placeholder:text-slate-600"
                 />
                 <div className="flex justify-end">
                   <button
@@ -899,15 +899,15 @@ export default function ConnectRoom({
           aria-modal="true"
           aria-label="Scan QR Code"
         >
-          <div className="bg-[#1C1C1C] rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-[#A8CC19]/60 animate-scale-up relative">
+          <div className="bg-[#202020] rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-[#337418]/60 animate-scale-up relative">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Camera className="w-4 h-4 text-[#D4FF27]" />
+                <Camera className="w-4 h-4 text-[#5DD62C]" />
                 <h3 className="text-sm font-bold text-white">Scan QR Code</h3>
               </div>
               <button
                 onClick={stopCameraScanner}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#242424]"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#282828]"
                 aria-label="Close scanner"
               >
                 <X className="w-4 h-4" />
@@ -915,10 +915,10 @@ export default function ConnectRoom({
             </div>
 
             {/* Viewfinder Frame */}
-            <div className="relative rounded-xl overflow-hidden bg-black h-[260px] min-h-[260px] max-h-[260px] w-full flex items-center justify-center border border-[#A8CC19]/40">
+            <div className="relative rounded-xl overflow-hidden bg-black h-[260px] min-h-[260px] max-h-[260px] w-full flex items-center justify-center border border-[#337418]/40">
               <div id={scannerContainerId} className="w-full h-full overflow-hidden rounded-lg flex items-center justify-center" />
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-                <div className="w-44 h-44 border-2 border-[#D4FF27] rounded-2xl shadow-[0_0_15px_rgba(212,255,39,0.4)]" />
+                <div className="w-44 h-44 border-2 border-[#5DD62C] rounded-2xl shadow-[0_0_15px_rgba(93,214,44,0.4)]" />
               </div>
             </div>
 
@@ -928,7 +928,7 @@ export default function ConnectRoom({
               </p>
             )}
 
-            <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#2A2A2A]">
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#303030]">
               <input
                 type="file"
                 ref={qrFileInputRef}
@@ -941,7 +941,7 @@ export default function ConnectRoom({
                 disabled={isProcessingFile}
                 className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 flex-1 justify-center"
               >
-                <FileImage className="w-3.5 h-3.5 text-[#A8CC19]" />
+                <FileImage className="w-3.5 h-3.5 text-[#5DD62C]" />
                 <span>{isProcessingFile ? 'Reading...' : 'Upload Image'}</span>
               </button>
               <button
@@ -959,7 +959,7 @@ export default function ConnectRoom({
       {/* 3. HOST WAITING STATE (Show QR to Friend)                                */}
       {/* ========================================================================= */}
       {status === 'waiting' && roomCode && (
-        <div className="glass-panel p-6 sm:p-8 text-center max-w-md mx-auto space-y-5 animate-scale-up bg-[#1C1C1C] border-[#A8CC19]/50">
+        <div className="glass-panel p-6 sm:p-8 text-center max-w-md mx-auto space-y-5 animate-scale-up bg-[#202020] border-[#337418]/50">
           <div className="space-y-1">
             <span className="badge-neon text-xs">Room Ready</span>
             <h3 className="text-lg font-bold text-white">Show this to your friend</h3>
@@ -968,14 +968,14 @@ export default function ConnectRoom({
             </p>
           </div>
 
-          <div className="p-3 sm:p-4 bg-white rounded-2xl border-2 border-[#D4FF27] inline-block shadow-[0_0_25px_rgba(212,255,39,0.25)]">
+          <div className="p-3 sm:p-4 bg-white rounded-2xl border-2 border-[#5DD62C] inline-block shadow-[0_0_25px_rgba(93,214,44,0.25)]">
             <QRCodeSVG
               value={hostQrPayload}
               size={250}
               level="L"
               includeMargin={true}
               bgColor="#FFFFFF"
-              fgColor="#121212"
+              fgColor="#0F0F0F"
             />
           </div>
 
@@ -984,21 +984,21 @@ export default function ConnectRoom({
               Room Code
             </span>
             <div className="flex items-center justify-center gap-2">
-              <span className="font-mono text-2xl font-bold tracking-widest text-[#D4FF27] bg-[#121212] px-5 py-2 rounded-xl border border-[#A8CC19]/50 select-all shadow-[0_0_12px_rgba(212,255,39,0.2)]">
+              <span className="font-mono text-2xl font-bold tracking-widest text-[#5DD62C] bg-[#0F0F0F] px-5 py-2 rounded-xl border border-[#337418]/50 select-all shadow-[0_0_12px_rgba(93,214,44,0.2)]">
                 {roomCode}
               </span>
               <button
                 onClick={handleCopyRoomCode}
-                className="p-2.5 rounded-xl bg-[#121212] border border-[#A8CC19]/50 hover:border-[#D4FF27] text-white hover:text-[#D4FF27] transition-all"
+                className="p-2.5 rounded-xl bg-[#0F0F0F] border border-[#337418]/50 hover:border-[#5DD62C] text-white hover:text-[#5DD62C] transition-all"
                 title="Copy Code"
               >
-                {copiedCode ? <Check className="w-4 h-4 text-[#D4FF27]" /> : <Copy className="w-4 h-4" />}
+                {copiedCode ? <Check className="w-4 h-4 text-[#5DD62C]" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
           <div className="flex items-center justify-center gap-2 text-xs text-slate-300 pt-1">
-            <Loader2 className="w-4 h-4 animate-spin text-[#D4FF27]" />
+            <Loader2 className="w-4 h-4 animate-spin text-[#5DD62C]" />
             <span>Waiting for friend to connect...</span>
           </div>
 
@@ -1017,8 +1017,8 @@ export default function ConnectRoom({
       {/* 4. CONNECTING STATE                                                      */}
       {/* ========================================================================= */}
       {(status === 'creating' || status === 'joining' || status === 'connecting') && status !== 'waiting' && (
-        <div className="glass-panel p-8 text-center max-w-sm mx-auto space-y-4 animate-scale-up bg-[#1C1C1C] border-[#A8CC19]/50">
-          <div className="w-12 h-12 rounded-2xl bg-[#121212] border border-[#D4FF27] flex items-center justify-center text-[#D4FF27] mx-auto shadow-[0_0_15px_rgba(212,255,39,0.3)]">
+        <div className="glass-panel p-8 text-center max-w-sm mx-auto space-y-4 animate-scale-up bg-[#202020] border-[#337418]/50">
+          <div className="w-12 h-12 rounded-2xl bg-[#0F0F0F] border border-[#5DD62C] flex items-center justify-center text-[#5DD62C] mx-auto shadow-[0_0_15px_rgba(93,214,44,0.3)]">
             <RefreshCw className="w-6 h-6 animate-spin" />
           </div>
 
@@ -1057,8 +1057,8 @@ export default function ConnectRoom({
             onDragEnter={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`rounded-[28px] border border-[#A8CC19]/40 overflow-hidden flex flex-col chat-container-responsive relative transition-all bg-[#121212] shadow-2xl ${
-              isDraggingOver ? 'ring-4 ring-[#D4FF27]/40 bg-[#1C1C1C]' : ''
+            className={`rounded-[28px] border border-[#337418]/40 overflow-hidden flex flex-col chat-container-responsive relative transition-all bg-[#0F0F0F] shadow-2xl ${
+              isDraggingOver ? 'ring-4 ring-[#5DD62C]/40 bg-[#202020]' : ''
             }`}
           >
             {/* Hidden File Input */}
@@ -1071,17 +1071,17 @@ export default function ConnectRoom({
 
             {/* Drag Overlay */}
             {isDraggingOver && (
-              <div className="absolute inset-0 z-50 bg-[#1C1C1C]/95 border-2 border-dashed border-[#D4FF27] rounded-[24px] flex flex-col items-center justify-center p-6 space-y-2 pointer-events-none animate-fade-in">
-                <UploadCloud className="w-12 h-12 text-[#D4FF27] animate-bounce" />
+              <div className="absolute inset-0 z-50 bg-[#202020]/95 border-2 border-dashed border-[#5DD62C] rounded-[24px] flex flex-col items-center justify-center p-6 space-y-2 pointer-events-none animate-fade-in">
+                <UploadCloud className="w-12 h-12 text-[#5DD62C] animate-bounce" />
                 <h3 className="text-sm font-bold text-white">Drop file to send</h3>
-                <p className="text-xs text-[#A8CC19]">Encrypted in 16KB blocks (Up to 25MB)</p>
+                <p className="text-xs text-[#5DD62C]">Encrypted in 16KB blocks (Up to 25MB)</p>
               </div>
             )}
 
-            {/* HEADER: #1C1C1C bg, thin #A8CC19 bottom border */}
-            <div className="px-5 py-3 bg-[#1C1C1C] border-b border-[#A8CC19]/40 flex items-center justify-between gap-3 shrink-0 relative z-20 shadow-md">
+            {/* HEADER: #202020 bg, thin #337418 bottom border */}
+            <div className="px-5 py-3 bg-[#202020] border-b border-[#337418]/40 flex items-center justify-between gap-3 shrink-0 relative z-20 shadow-md">
               <div className="flex items-center gap-3 min-w-0">
-                {/* Peer avatar circle with #D4FF27 border */}
+                {/* Peer avatar circle with #5DD62C border */}
                 <div className="relative shrink-0">
                   <div 
                     className="chat-avatar-40"
@@ -1091,7 +1091,7 @@ export default function ConnectRoom({
                   </div>
                   {/* Glowing Connection status dot */}
                   <span 
-                    className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#D4FF27] rounded-full border border-[#121212] shadow-[0_0_8px_rgba(212,255,39,0.8)]"
+                    className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#5DD62C] rounded-full border border-[#0F0F0F] shadow-[0_0_8px_rgba(93,214,44,0.8)]"
                     title="Connected"
                   />
                 </div>
@@ -1106,10 +1106,10 @@ export default function ConnectRoom({
                     {/* Connection status badge */}
                     <button
                       onClick={() => setShowSecurityModal(true)}
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#121212] text-[#D4FF27] border border-[#D4FF27] shadow-[0_0_10px_rgba(212,255,39,0.25)] hover:bg-[#D4FF27]/10 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#0F0F0F] text-[#5DD62C] border border-[#5DD62C] shadow-[0_0_10px_rgba(93,214,44,0.25)] hover:bg-[#5DD62C]/10 transition-all cursor-pointer"
                       title="Click for security & encryption details"
                     >
-                      <Lock className="w-2.5 h-2.5 text-[#D4FF27]" />
+                      <Lock className="w-2.5 h-2.5 text-[#5DD62C]" />
                       <span>Encrypted</span>
                     </button>
 
@@ -1143,8 +1143,8 @@ export default function ConnectRoom({
                       className="fixed inset-0 z-30" 
                       onClick={() => setShowOptionsMenu(false)} 
                     />
-                    <div className="absolute right-0 top-11 z-40 w-56 bg-[#1C1C1C] rounded-2xl border border-[#A8CC19] p-2 shadow-2xl space-y-1 animate-scale-up">
-                      <div className="px-3 py-2 border-b border-[#2A2A2A]">
+                    <div className="absolute right-0 top-11 z-40 w-56 bg-[#202020] rounded-2xl border border-[#337418] p-2 shadow-2xl space-y-1 animate-scale-up">
+                      <div className="px-3 py-2 border-b border-[#303030]">
                         <p className="text-xs font-bold text-white">Session Options</p>
                         <p className="text-[10px] text-slate-400 font-mono truncate">Room: {roomCode}</p>
                       </div>
@@ -1155,9 +1155,9 @@ export default function ConnectRoom({
                           handleCopyRoomCode();
                           setShowOptionsMenu(false);
                         }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-[#D4FF27] hover:bg-[#242424] flex items-center gap-2 transition-colors font-medium cursor-pointer"
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-[#5DD62C] hover:bg-[#282828] flex items-center gap-2 transition-colors font-medium cursor-pointer"
                       >
-                        <Copy className="w-3.5 h-3.5 text-[#A8CC19]" />
+                        <Copy className="w-3.5 h-3.5 text-[#5DD62C]" />
                         <span>Copy Room Code</span>
                       </button>
 
@@ -1167,9 +1167,9 @@ export default function ConnectRoom({
                           setShowSecurityModal(true);
                           setShowOptionsMenu(false);
                         }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-[#D4FF27] hover:bg-[#242424] flex items-center gap-2 transition-colors font-medium cursor-pointer"
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-[#5DD62C] hover:bg-[#282828] flex items-center gap-2 transition-colors font-medium cursor-pointer"
                       >
-                        <ShieldCheck className="w-3.5 h-3.5 text-[#D4FF27]" />
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#5DD62C]" />
                         <span>Security & Encryption</span>
                       </button>
 
@@ -1179,7 +1179,7 @@ export default function ConnectRoom({
                           setShowOptionsMenu(false);
                           handleDisconnect();
                         }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-rose-400 hover:bg-rose-500/15 flex items-center gap-2 transition-colors font-semibold cursor-pointer border-t border-[#2A2A2A] mt-1"
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-rose-400 hover:bg-rose-500/15 flex items-center gap-2 transition-colors font-semibold cursor-pointer border-t border-[#303030] mt-1"
                       >
                         <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                         <span>Leave Room & Wipe</span>
@@ -1192,11 +1192,11 @@ export default function ConnectRoom({
 
             {/* Security Details Modal (When triggered from Options) */}
             {showSecurityModal && (
-              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-                <div className="bg-[#1C1C1C] rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-[#A8CC19] animate-scale-up">
-                  <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-2">
-                    <div className="flex items-center gap-2 text-[#D4FF27]">
-                      <ShieldCheck className="w-5 h-5 text-[#D4FF27]" />
+              <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+                <div className="bg-[#202020] rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-[#337418] animate-scale-up">
+                  <div className="flex items-center justify-between border-b border-[#303030] pb-2">
+                    <div className="flex items-center gap-2 text-[#5DD62C]">
+                      <ShieldCheck className="w-5 h-5 text-[#5DD62C]" />
                       <h3 className="text-sm font-bold text-white">Session Security</h3>
                     </div>
                     <button
@@ -1208,19 +1208,19 @@ export default function ConnectRoom({
                   </div>
 
                   <div className="space-y-2.5 text-xs text-slate-300">
-                    <div className="p-2.5 bg-[#121212] border border-[#A8CC19]/40 rounded-xl space-y-1">
+                    <div className="p-2.5 bg-[#0F0F0F] border border-[#337418]/40 rounded-xl space-y-1">
                       <p className="font-bold text-white">Symmetric Encryption</p>
-                      <p className="font-mono text-[11px] text-[#A8CC19]">AES-256-GCM (Fresh 12-byte IV per message)</p>
+                      <p className="font-mono text-[11px] text-[#5DD62C]">AES-256-GCM (Fresh 12-byte IV per message)</p>
                     </div>
-                    <div className="p-2.5 bg-[#121212] border border-[#A8CC19]/40 rounded-xl space-y-1">
+                    <div className="p-2.5 bg-[#0F0F0F] border border-[#337418]/40 rounded-xl space-y-1">
                       <p className="font-bold text-white">Digital Signatures</p>
-                      <p className="font-mono text-[11px] text-[#A8CC19]">ECDSA P-256 (SHA-256 Digest)</p>
+                      <p className="font-mono text-[11px] text-[#5DD62C]">ECDSA P-256 (SHA-256 Digest)</p>
                     </div>
-                    <div className="p-2.5 bg-[#121212] border border-[#A8CC19]/40 rounded-xl space-y-1">
+                    <div className="p-2.5 bg-[#0F0F0F] border border-[#337418]/40 rounded-xl space-y-1">
                       <p className="font-bold text-white">Key Agreement</p>
-                      <p className="font-mono text-[11px] text-[#A8CC19]">ECDH P-256 (Diffie-Hellman Shared Secret)</p>
+                      <p className="font-mono text-[11px] text-[#5DD62C]">ECDH P-256 (Diffie-Hellman Shared Secret)</p>
                     </div>
-                    <div className="p-2.5 bg-[#121212] border border-[#A8CC19]/40 rounded-xl space-y-1">
+                    <div className="p-2.5 bg-[#0F0F0F] border border-[#337418]/40 rounded-xl space-y-1">
                       <p className="font-bold text-white">Ephemeral Storage</p>
                       <p className="text-[11px] text-slate-400">Volatile RAM only. Wiped on leave, tab close, or 30s background blur.</p>
                     </div>
@@ -1236,11 +1236,11 @@ export default function ConnectRoom({
               </div>
             )}
 
-            {/* CHAT BUBBLES STREAM: #121212 bg, 14-16px gap */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 sm:space-y-4 bg-[#121212]">
+            {/* CHAT BUBBLES STREAM: #0F0F0F bg, 14-16px gap */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 sm:space-y-4 bg-[#0F0F0F]">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-[#1C1C1C] border border-[#D4FF27] flex items-center justify-center text-[#D4FF27] shadow-[0_0_15px_rgba(212,255,39,0.3)]">
+                  <div className="w-12 h-12 rounded-full bg-[#202020] border border-[#5DD62C] flex items-center justify-center text-[#5DD62C] shadow-[0_0_15px_rgba(93,214,44,0.3)]">
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <p className="text-sm font-bold text-white">Encrypted tunnel established</p>
@@ -1260,7 +1260,7 @@ export default function ConnectRoom({
                     : '';
 
                   if (isMe) {
-                    // SENT (MY) MESSAGES: Right-aligned, solid #D4FF27 fill, #121212 dark text
+                    // SENT (MY) MESSAGES: Right-aligned, solid #5DD62C fill, #0F0F0F dark text
                     return (
                       <div
                         key={msg.id}
@@ -1271,36 +1271,36 @@ export default function ConnectRoom({
                         {/* Outside Left: Countdown Badge & Timestamp */}
                         <div className="flex flex-col items-end gap-1 select-none pb-1 shrink-0">
                           {isBurn ? (
-                            <span className="inline-flex items-center gap-1 font-bold text-[10px] text-[#121212] bg-[#D4FF27] border border-[#D4FF27] px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(212,255,39,0.35)]">
-                              <Flame className="w-2.5 h-2.5 text-[#121212] fill-[#121212] animate-pulse" />
+                            <span className="inline-flex items-center gap-1 font-bold text-[10px] text-[#0F0F0F] bg-[#5DD62C] border border-[#5DD62C] px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(93,214,44,0.35)]">
+                              <Flame className="w-2.5 h-2.5 text-[#0F0F0F] fill-[#0F0F0F] animate-pulse" />
                               <span>{remainingSecs}s</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 font-mono text-[10px] text-[#A8CC19] bg-[#1C1C1C] border border-[#A8CC19]/50 px-1.5 py-0.5 rounded-full shadow-xs">
-                              <Clock className="w-2.5 h-2.5 text-[#A8CC19]" />
+                            <span className="inline-flex items-center gap-1 font-mono text-[10px] text-[#5DD62C] bg-[#202020] border border-[#337418]/50 px-1.5 py-0.5 rounded-full shadow-xs">
+                              <Clock className="w-2.5 h-2.5 text-[#5DD62C]" />
                               <span>{remainingSecs}s</span>
                             </span>
                           )}
                           <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400 font-semibold">
-                            <Check className="w-3 h-3 text-[#D4FF27] stroke-[2.5]" />
+                            <Check className="w-3 h-3 text-[#5DD62C] stroke-[2.5]" />
                             <span>{timeStr}</span>
                           </div>
                         </div>
 
-                        {/* #D4FF27 Bubble Container: sizes to content naturally up to 75% */}
+                        {/* #5DD62C Bubble Container: sizes to content naturally up to 75% */}
                         <div className="max-w-[75%] flex justify-end min-w-0">
                           <div className="bubble-mine">
                             {isFile ? (
                               <div className="space-y-2 min-w-[200px] sm:min-w-[240px]">
                                 {msg.status !== 'completed' ? (
-                                  <div className="space-y-1.5 pt-1">
-                                    <div className="flex items-center justify-between text-[10px] text-[#121212]/75 font-mono">
+                                   <div className="space-y-1.5 pt-1">
+                                    <div className="flex items-center justify-between text-[10px] text-[#0F0F0F]/75 font-mono">
                                       <span>{msg.status === 'receiving' ? 'Receiving...' : 'Sending...'}</span>
                                       <span>{msg.progress || 0}%</span>
                                     </div>
                                     <div className="w-full h-2 rounded-full overflow-hidden bg-black/20">
                                       <div
-                                        className="h-full transition-all duration-150 bg-[#121212]"
+                                        className="h-full transition-all duration-150 bg-[#0F0F0F]"
                                         style={{ width: `${msg.progress || 0}%` }}
                                       />
                                     </div>
@@ -1322,16 +1322,16 @@ export default function ConnectRoom({
                                       />
                                     </div>
                                     <div className="flex items-center justify-between gap-2 pt-0.5">
-                                      <span className="text-[10px] font-mono text-[#121212]/75 truncate max-w-[130px]">
+                                      <span className="text-[10px] font-mono text-[#0F0F0F]/75 truncate max-w-[130px]">
                                         {msg.fileName}
                                       </span>
                                       <a
                                         href={msg.blobUrl}
                                         download={msg.fileName}
                                         onClick={() => handleTriggerFileBurn(msg.id)}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#121212] text-white hover:bg-black transition-all shadow-xs"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#0F0F0F] text-white hover:bg-black transition-all shadow-xs"
                                       >
-                                        <Download className="w-2.5 h-2.5 text-[#D4FF27]" />
+                                        <Download className="w-2.5 h-2.5 text-[#5DD62C]" />
                                         <span>Save</span>
                                       </a>
                                     </div>
@@ -1340,14 +1340,14 @@ export default function ConnectRoom({
                                   /* Standard File Card */
                                   <div className="space-y-2">
                                     <div className="flex items-start gap-2.5">
-                                      <div className="p-2 rounded-xl bg-black/15 text-[#121212] shrink-0">
+                                      <div className="p-2 rounded-xl bg-black/15 text-[#0F0F0F] shrink-0">
                                         <FileText className="w-4.5 h-4.5" />
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="text-xs sm:text-sm font-bold text-[#121212] truncate" title={msg.fileName}>
+                                        <p className="text-xs sm:text-sm font-bold text-[#0F0F0F] truncate" title={msg.fileName}>
                                           {msg.fileName}
                                         </p>
-                                        <span className="text-[10px] text-[#121212]/75 font-mono">
+                                        <span className="text-[10px] text-[#0F0F0F]/75 font-mono">
                                           {formatFileSize(msg.fileSize)}
                                         </span>
                                       </div>
@@ -1358,9 +1358,9 @@ export default function ConnectRoom({
                                           href={msg.blobUrl}
                                           download={msg.fileName}
                                           onClick={() => handleTriggerFileBurn(msg.id)}
-                                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#121212] text-white hover:bg-black transition-all shadow-md"
+                                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0F0F0F] text-white hover:bg-black transition-all shadow-md"
                                         >
-                                          <Download className="w-3 h-3 text-[#D4FF27]" />
+                                          <Download className="w-3 h-3 text-[#5DD62C]" />
                                           <span>Download</span>
                                         </a>
                                       </div>
@@ -1369,7 +1369,7 @@ export default function ConnectRoom({
                                 )}
                               </div>
                             ) : (
-                              <p className="text-[15px] sm:text-[16px] leading-relaxed font-normal whitespace-pre-wrap text-[#121212] m-0">
+                              <p className="text-[15px] sm:text-[16px] leading-relaxed font-normal whitespace-pre-wrap text-[#0F0F0F] m-0">
                                 {msg.text}
                               </p>
                             )}
@@ -1378,7 +1378,7 @@ export default function ConnectRoom({
                       </div>
                     );
                   } else {
-                    // RECEIVED (PEER) MESSAGES: Left-aligned, solid #E8F5E1 fill, #121212 dark text
+                    // RECEIVED (PEER) MESSAGES: Left-aligned, solid #F8F8F8 fill, #0F0F0F dark text
                     return (
                       <div
                         key={msg.id}
@@ -1388,7 +1388,7 @@ export default function ConnectRoom({
                       >
                         {/* Peer Avatar (Aligned to baseline) */}
                         <div 
-                          className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-full border border-[#A8CC19] bg-[#1C1C1C] text-[#E8F5E1] font-bold text-xs flex items-center justify-center font-mono select-none shrink-0"
+                          className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-full border border-[#337418] bg-[#202020] text-[#F8F8F8] font-bold text-xs flex items-center justify-center font-mono select-none shrink-0"
                           title={verifiedPeer?.fingerprint || 'Peer'}
                         >
                           {peerInitials}
@@ -1401,19 +1401,19 @@ export default function ConnectRoom({
                           </span>
 
                           <div className="flex items-end gap-2.5">
-                            {/* #E8F5E1 Bubble Container: sizes to content naturally up to 75% */}
+                            {/* #F8F8F8 Bubble Container: sizes to content naturally up to 75% */}
                             <div className="bubble-peer">
                               {isFile ? (
                                 <div className="space-y-2 min-w-[200px] sm:min-w-[240px]">
                                   {msg.status !== 'completed' ? (
                                     <div className="space-y-1.5 pt-1">
-                                      <div className="flex items-center justify-between text-[10px] text-[#121212]/75 font-mono">
+                                      <div className="flex items-center justify-between text-[10px] text-[#0F0F0F]/75 font-mono">
                                         <span>Receiving...</span>
                                         <span>{msg.progress || 0}%</span>
                                       </div>
                                       <div className="w-full h-2 rounded-full overflow-hidden bg-black/20">
                                         <div
-                                          className="h-full transition-all duration-150 bg-[#121212]"
+                                          className="h-full transition-all duration-150 bg-[#0F0F0F]"
                                           style={{ width: `${msg.progress || 0}%` }}
                                         />
                                       </div>
@@ -1435,16 +1435,16 @@ export default function ConnectRoom({
                                         />
                                       </div>
                                       <div className="flex items-center justify-between gap-2 pt-0.5">
-                                        <span className="text-[10px] font-mono text-[#121212]/75 truncate max-w-[130px]">
+                                        <span className="text-[10px] font-mono text-[#0F0F0F]/75 truncate max-w-[130px]">
                                           {msg.fileName}
                                         </span>
                                         <a
                                           href={msg.blobUrl}
                                           download={msg.fileName}
                                           onClick={() => handleTriggerFileBurn(msg.id)}
-                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#121212] text-white hover:bg-black transition-all shadow-xs"
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#0F0F0F] text-white hover:bg-black transition-all shadow-xs"
                                         >
-                                          <Download className="w-2.5 h-2.5 text-[#E8F5E1]" />
+                                          <Download className="w-2.5 h-2.5 text-[#5DD62C]" />
                                           <span>Save</span>
                                         </a>
                                       </div>
@@ -1453,14 +1453,14 @@ export default function ConnectRoom({
                                     /* Standard File Card for Peer */
                                     <div className="space-y-2">
                                       <div className="flex items-start gap-2.5">
-                                        <div className="p-2 rounded-xl bg-black/15 text-[#121212] shrink-0">
+                                        <div className="p-2 rounded-xl bg-black/15 text-[#0F0F0F] shrink-0">
                                           <FileText className="w-4.5 h-4.5" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                          <p className="text-xs sm:text-sm font-bold text-[#121212] truncate" title={msg.fileName}>
+                                          <p className="text-xs sm:text-sm font-bold text-[#0F0F0F] truncate" title={msg.fileName}>
                                             {msg.fileName}
                                           </p>
-                                          <span className="text-[10px] text-[#121212]/75 font-mono">
+                                          <span className="text-[10px] text-[#0F0F0F]/75 font-mono">
                                             {formatFileSize(msg.fileSize)}
                                           </span>
                                         </div>
@@ -1471,9 +1471,9 @@ export default function ConnectRoom({
                                             href={msg.blobUrl}
                                             download={msg.fileName}
                                             onClick={() => handleTriggerFileBurn(msg.id)}
-                                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#121212] text-white hover:bg-black transition-all shadow-md"
+                                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0F0F0F] text-white hover:bg-black transition-all shadow-md"
                                           >
-                                            <Download className="w-3 h-3 text-[#E8F5E1]" />
+                                            <Download className="w-3 h-3 text-[#5DD62C]" />
                                             <span>Download</span>
                                           </a>
                                         </div>
@@ -1482,7 +1482,7 @@ export default function ConnectRoom({
                                   )}
                                 </div>
                               ) : (
-                                <p className="text-[15px] sm:text-[16px] leading-relaxed font-normal whitespace-pre-wrap text-[#121212] m-0">
+                                <p className="text-[15px] sm:text-[16px] leading-relaxed font-normal whitespace-pre-wrap text-[#0F0F0F] m-0">
                                   {msg.text}
                                 </p>
                               )}
@@ -1491,13 +1491,13 @@ export default function ConnectRoom({
                             {/* Outside Right: Countdown Badge & Timestamp */}
                             <div className="flex flex-col items-start gap-1 select-none pb-1 shrink-0">
                               {isBurn ? (
-                                <span className="inline-flex items-center gap-1 font-bold text-[10px] text-[#121212] bg-[#D4FF27] border border-[#D4FF27] px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(212,255,39,0.35)]">
-                                  <Flame className="w-2.5 h-2.5 text-[#121212] fill-[#121212] animate-pulse" />
+                                <span className="inline-flex items-center gap-1 font-bold text-[10px] text-[#0F0F0F] bg-[#5DD62C] border border-[#5DD62C] px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(93,214,44,0.35)]">
+                                  <Flame className="w-2.5 h-2.5 text-[#0F0F0F] fill-[#0F0F0F] animate-pulse" />
                                   <span>{remainingSecs}s</span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 font-mono text-[10px] text-[#A8CC19] bg-[#1C1C1C] border border-[#A8CC19]/50 px-1.5 py-0.5 rounded-full shadow-xs">
-                                  <Clock className="w-2.5 h-2.5 text-[#A8CC19]" />
+                                <span className="inline-flex items-center gap-1 font-mono text-[10px] text-[#5DD62C] bg-[#202020] border border-[#337418]/50 px-1.5 py-0.5 rounded-full shadow-xs">
+                                  <Clock className="w-2.5 h-2.5 text-[#5DD62C]" />
                                   <span>{remainingSecs}s</span>
                                 </span>
                               )}
@@ -1515,9 +1515,9 @@ export default function ConnectRoom({
 
             {/* Staged File Preview Bar */}
             {attachedFile && (
-              <div className="px-4 py-2.5 bg-[#1C1C1C] border-t border-[#A8CC19]/40 flex items-center justify-between gap-3 text-xs animate-slide-up">
+              <div className="px-4 py-2.5 bg-[#202020] border-t border-[#337418]/40 flex items-center justify-between gap-3 text-xs animate-slide-up">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full border border-[#D4FF27] bg-[#121212] flex items-center justify-center text-[#D4FF27] shrink-0">
+                  <div className="w-7 h-7 rounded-full border border-[#5DD62C] bg-[#0F0F0F] flex items-center justify-center text-[#5DD62C] shrink-0">
                     <File className="w-3.5 h-3.5" />
                   </div>
                   <span className="font-bold text-white truncate max-w-[180px] sm:max-w-xs">{attachedFile.name}</span>
@@ -1530,8 +1530,8 @@ export default function ConnectRoom({
                     onClick={() => setFileBurnOnRead(!fileBurnOnRead)}
                     className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-colors cursor-pointer ${
                       fileBurnOnRead
-                        ? 'bg-[#D4FF27] text-[#121212] border-[#D4FF27] shadow-[0_0_8px_rgba(212,255,39,0.3)]'
-                        : 'bg-[#121212] text-slate-300 border-[#A8CC19]/50 hover:border-[#D4FF27]'
+                        ? 'bg-[#5DD62C] text-[#0F0F0F] border-[#5DD62C] shadow-[0_0_8px_rgba(93,214,44,0.3)]'
+                        : 'bg-[#0F0F0F] text-slate-300 border-[#337418]/50 hover:border-[#5DD62C]'
                     }`}
                     title="Burn file on read"
                   >
@@ -1542,7 +1542,7 @@ export default function ConnectRoom({
                   <button
                     type="button"
                     onClick={() => setAttachedFile(null)}
-                    className="w-7 h-7 rounded-full border border-slate-600 bg-[#121212] hover:bg-[#242424] text-slate-300 flex items-center justify-center cursor-pointer"
+                    className="w-7 h-7 rounded-full border border-slate-600 bg-[#0F0F0F] hover:bg-[#282828] text-slate-300 flex items-center justify-center cursor-pointer"
                     title="Cancel attachment"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -1561,8 +1561,8 @@ export default function ConnectRoom({
               </div>
             )}
 
-            {/* FOOTER: #1C1C1C bar, input with #121212 bg + #A8CC19 border + white text, #D4FF27 send button */}
-            <div className="p-3 sm:p-4 bg-[#1C1C1C] border-t border-[#A8CC19]/40 shrink-0 shadow-lg">
+            {/* FOOTER: #202020 bar, input with #0F0F0F bg + #337418 border + white text, #5DD62C send button */}
+            <div className="p-3 sm:p-4 bg-[#202020] border-t border-[#337418]/40 shrink-0 shadow-lg">
               <form onSubmit={handleSendMessage} className="flex items-center gap-2 sm:gap-3">
                 {/* Left: Attach icon button */}
                 <button
@@ -1572,11 +1572,11 @@ export default function ConnectRoom({
                   title="Attach File or Photo (Encrypted P2P)"
                   aria-label="Attach file"
                 >
-                  <Paperclip className="w-5 h-5 text-[#A8CC19] hover:text-[#D4FF27]" />
+                  <Paperclip className="w-5 h-5 text-[#5DD62C] hover:text-[#6DE73B]" />
                 </button>
 
-                {/* Text input: #121212 bg, #A8CC19 border, white text, rounded pill shape */}
-                <div className="flex-1 bg-[#121212] border border-[#A8CC19] focus-within:border-[#D4FF27] focus-within:shadow-[0_0_10px_rgba(212,255,39,0.2)] rounded-full px-4 h-10 transition-all flex items-center">
+                {/* Text input: #0F0F0F bg, #337418 border, white text, rounded pill shape */}
+                <div className="flex-1 bg-[#0F0F0F] border border-[#337418] focus-within:border-[#5DD62C] focus-within:shadow-[0_0_10px_rgba(93,214,44,0.2)] rounded-full px-4 h-10 transition-all flex items-center">
                   <input
                     type="text"
                     value={inputText}
@@ -1594,13 +1594,13 @@ export default function ConnectRoom({
                     onClick={() => setBurnOnReadEnabled(!burnOnReadEnabled)}
                     className={`chat-icon-btn w-10 h-10 min-w-[40px] min-h-[40px] ${
                       burnOnReadEnabled
-                        ? 'bg-[#D4FF27] text-[#121212] border-[#D4FF27] shadow-[0_0_14px_rgba(212,255,39,0.4)]'
+                        ? 'bg-[#5DD62C] text-[#0F0F0F] border-[#5DD62C] shadow-[0_0_14px_rgba(93,214,44,0.4)]'
                         : ''
                     }`}
                     title={burnOnReadEnabled ? 'Burn on Read: Active (5s)' : 'Turn on Burn-on-Read'}
                     aria-label="Toggle burn on read"
                   >
-                    <Flame className={`w-5 h-5 ${burnOnReadEnabled ? 'fill-[#121212] text-[#121212]' : ''}`} />
+                    <Flame className={`w-5 h-5 ${burnOnReadEnabled ? 'fill-[#0F0F0F] text-[#0F0F0F]' : ''}`} />
                   </button>
 
                   {/* Circular send button */}
@@ -1611,7 +1611,7 @@ export default function ConnectRoom({
                     title="Send encrypted message or file"
                     aria-label="Send message"
                   >
-                    <Send className="w-4 h-4 ml-0.5 text-[#121212]" />
+                    <Send className="w-4 h-4 ml-0.5 text-[#0F0F0F]" />
                   </button>
                 </div>
               </form>
@@ -1644,7 +1644,7 @@ export default function ConnectRoom({
                 </a>
                 <button
                   onClick={() => setPreviewImage(null)}
-                  className="w-8 h-8 rounded-full bg-[#1C1C1C] border border-[#A8CC19]/40 text-white hover:bg-[#242424] flex items-center justify-center cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-[#202020] border border-[#337418]/40 text-white hover:bg-[#282828] flex items-center justify-center cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1652,7 +1652,7 @@ export default function ConnectRoom({
             </div>
 
             {/* Image display */}
-            <div className="rounded-2xl overflow-hidden border border-[#A8CC19]/50 bg-[#121212] shadow-2xl max-h-[75vh] flex items-center justify-center">
+            <div className="rounded-2xl overflow-hidden border border-[#337418]/50 bg-[#0F0F0F] shadow-2xl max-h-[75vh] flex items-center justify-center">
               <img
                 src={previewImage.url}
                 alt={previewImage.name}

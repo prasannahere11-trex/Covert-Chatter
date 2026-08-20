@@ -18,9 +18,9 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
 
   if (!identity || !identity.publicJWKs) {
     return (
-      <div className="glass-panel p-8 text-center text-slate-400 bg-[#1C1C1C] border-[#A8CC19]/30">
+      <div className="glass-panel p-8 text-center text-slate-400 bg-[#202020] border-[#337418]/30">
         <div className="animate-pulse flex flex-col items-center gap-3">
-          <KeyRound className="w-8 h-8 text-[#D4FF27]" />
+          <KeyRound className="w-8 h-8 text-[#5DD62C]" />
           <p>Generating cryptographically secure identity...</p>
         </div>
       </div>
@@ -83,11 +83,11 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top Header Card */}
-      <div className="glass-panel p-6 sm:p-8 bg-[#1C1C1C] border-[#A8CC19]/40">
+      <div className="glass-panel p-6 sm:p-8 bg-[#202020] border-[#337418]/40">
         <div className="flex flex-col md:flex-row items-center gap-8 justify-between">
           {/* Left: QR Display */}
           <div className="flex flex-col items-center gap-3">
-            <div className="p-3 sm:p-4 bg-white rounded-2xl border-2 border-[#D4FF27] shadow-[0_0_25px_rgba(212,255,39,0.25)] relative">
+            <div className="p-3 sm:p-4 bg-white rounded-2xl border-2 border-[#5DD62C] shadow-[0_0_25px_rgba(93,214,44,0.25)] relative">
               <QRCodeSVG
                 id="identity-qr-code"
                 value={qrPayload}
@@ -95,7 +95,7 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
                 level="L"
                 includeMargin={true}
                 bgColor="#FFFFFF"
-                fgColor="#121212"
+                fgColor="#0F0F0F"
               />
             </div>
             
@@ -105,7 +105,7 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
                 className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
                 title="Download QR SVG"
               >
-                <Download className="w-3.5 h-3.5 text-[#A8CC19]" />
+                <Download className="w-3.5 h-3.5 text-[#5DD62C]" />
                 <span>Save QR</span>
               </button>
               <button
@@ -114,9 +114,9 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
                 title="Copy raw JSON payload"
               >
                 {copiedField === 'payload' ? (
-                  <Check className="w-3.5 h-3.5 text-[#D4FF27]" />
+                  <Check className="w-3.5 h-3.5 text-[#5DD62C]" />
                 ) : (
-                  <Share2 className="w-3.5 h-3.5 text-[#A8CC19]" />
+                  <Share2 className="w-3.5 h-3.5 text-[#5DD62C]" />
                 )}
                 <span>Share Payload</span>
               </button>
@@ -145,17 +145,17 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
             </div>
 
             {/* Fingerprint Box */}
-            <div className="bg-[#121212] border border-[#A8CC19]/50 rounded-xl p-3 relative group">
-              <div className="font-mono text-[#D4FF27] font-semibold text-xs sm:text-sm tracking-wider break-all select-all pr-12">
+            <div className="bg-[#0F0F0F] border border-[#337418]/50 rounded-xl p-3 relative group">
+              <div className="font-mono text-[#5DD62C] font-semibold text-xs sm:text-sm tracking-wider break-all select-all pr-12">
                 {identity.fingerprint}
               </div>
               <button
                 onClick={() => handleCopy(identity.fingerprint, 'fingerprint', 'Fingerprint copied')}
-                className="absolute right-2.5 top-2.5 p-1.5 rounded-lg bg-[#1C1C1C] border border-[#A8CC19]/50 text-slate-300 hover:text-[#D4FF27] shadow-xs cursor-pointer transition-colors"
+                className="absolute right-2.5 top-2.5 p-1.5 rounded-lg bg-[#202020] border border-[#337418]/50 text-slate-300 hover:text-[#5DD62C] shadow-xs cursor-pointer transition-colors"
                 title="Copy Fingerprint"
               >
                 {copiedField === 'fingerprint' ? (
-                  <Check className="w-3.5 h-3.5 text-[#D4FF27]" />
+                  <Check className="w-3.5 h-3.5 text-[#5DD62C]" />
                 ) : (
                   <Copy className="w-3.5 h-3.5" />
                 )}
@@ -164,15 +164,15 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
 
             {/* Keypair Summary */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div className="p-3 bg-[#121212] border border-[#A8CC19]/30 rounded-xl">
+              <div className="p-3 bg-[#0F0F0F] border border-[#337418]/30 rounded-xl">
                 <div className="text-xs text-slate-400 font-medium">Signing Algorithm</div>
                 <div className="text-sm font-semibold text-white mt-0.5">ECDSA NIST P-256</div>
-                <div className="text-[11px] text-[#A8CC19] mt-0.5">Non-extractable Private Key</div>
+                <div className="text-[11px] text-[#5DD62C] mt-0.5">Non-extractable Private Key</div>
               </div>
-              <div className="p-3 bg-[#121212] border border-[#A8CC19]/30 rounded-xl">
+              <div className="p-3 bg-[#0F0F0F] border border-[#337418]/30 rounded-xl">
                 <div className="text-xs text-slate-400 font-medium">Key Agreement</div>
                 <div className="text-sm font-semibold text-white mt-0.5">ECDH NIST P-256</div>
-                <div className="text-[11px] text-[#A8CC19] mt-0.5">Non-extractable Private Key</div>
+                <div className="text-[11px] text-[#5DD62C] mt-0.5">Non-extractable Private Key</div>
               </div>
             </div>
 
@@ -184,7 +184,7 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
               >
                 {copiedField === 'raw_json' ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-[#121212]" />
+                    <Check className="w-3.5 h-3.5 text-[#0F0F0F]" />
                     <span>Copied JSON</span>
                   </>
                 ) : (
@@ -220,7 +220,7 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
           role="dialog"
           aria-modal="true"
         >
-          <div className="bg-[#1C1C1C] border border-[#A8CC19]/50 max-w-sm w-full p-5 rounded-2xl space-y-4 shadow-2xl animate-scale-up">
+          <div className="bg-[#202020] border border-[#337418]/50 max-w-sm w-full p-5 rounded-2xl space-y-4 shadow-2xl animate-scale-up">
             <div className="flex items-center gap-2.5 text-rose-400">
               <AlertTriangle className="w-5 h-5" />
               <h3 className="text-base font-bold text-white">Regenerate Identity?</h3>

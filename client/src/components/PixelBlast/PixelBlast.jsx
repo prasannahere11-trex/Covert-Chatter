@@ -303,7 +303,7 @@ const MAX_CLICKS = 10;
 const PixelBlast = ({
   variant = 'square',
   pixelSize = 4,
-  color = '#D4FF27',
+  color = '#5DD62C',
   className,
   style,
   antialias = true,
