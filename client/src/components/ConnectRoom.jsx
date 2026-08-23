@@ -763,9 +763,9 @@ export default function ConnectRoom({
           )}
 
           {/* Clean 2-Card Pairing Action Hub */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
             {/* Start Chat Card */}
-            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-[#5DD62C]/60 hover:shadow-[0_0_20px_rgba(93,214,44,0.15)] transition-all bg-[#202020]">
+            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-[#5DD62C]/60 hover:shadow-[0_0_20px_rgba(93,214,44,0.15)] transition-all bg-[#202020] h-full">
               <div className="space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-[#0F0F0F] border border-[#5DD62C] flex items-center justify-center text-[#5DD62C] shadow-[0_0_12px_rgba(93,214,44,0.25)]">
                   <QrCode className="w-6 h-6" />
@@ -786,9 +786,9 @@ export default function ConnectRoom({
             </div>
 
             {/* Join Chat Card */}
-            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-[#5DD62C]/60 hover:shadow-[0_0_20px_rgba(93,214,44,0.15)] transition-all bg-[#202020]">
+            <div className="glass-panel p-6 sm:p-8 flex flex-col justify-between space-y-6 hover:border-[#5DD62C]/60 hover:shadow-[0_0_20px_rgba(93,214,44,0.15)] transition-all bg-[#202020] h-full">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#0F0F0F] border border-[#337418] flex items-center justify-center text-[#5DD62C]">
+                <div className="w-12 h-12 rounded-2xl bg-[#0F0F0F] border border-[#5DD62C] flex items-center justify-center text-[#5DD62C] shadow-[0_0_12px_rgba(93,214,44,0.25)]">
                   <Camera className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-bold text-white">Join Chat</h3>

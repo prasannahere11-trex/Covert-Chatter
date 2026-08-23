@@ -83,8 +83,8 @@ export default function MyIdentity({ identity, onRegenerate, onShowToast }) {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top Header Card */}
-      <div className="glass-panel p-6 sm:p-8 bg-[#202020] border-[#337418]/40">
-        <div className="flex flex-col md:flex-row items-center gap-8 justify-between">
+      <div className="glass-panel p-6 sm:p-8 bg-[#202020] border-[#337418]/40 shadow-xl">
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-8 justify-between">
           {/* Left: QR Display */}
           <div className="flex flex-col items-center gap-3">
             <div className="p-3 sm:p-4 bg-white rounded-2xl border-2 border-[#5DD62C] shadow-[0_0_25px_rgba(93,214,44,0.25)] relative">
