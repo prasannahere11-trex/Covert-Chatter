@@ -78,38 +78,19 @@ export default function App() {
   }, [showKeyDetailsModal]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0F0F0F] text-white selection:bg-[#5DD62C] selection:text-[#0F0F0F] relative overflow-x-hidden">
-      {/* Animated Neon Green PixelBlast Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-40 overflow-hidden">
-        <PixelBlast
-          variant="square"
-          pixelSize={4}
-          color="#5DD62C"
-          patternScale={2.5}
-          patternDensity={0.7}
-          pixelSizeJitter={0.2}
-          enableRipples={false}
-          speed={0.35}
-          edgeFade={0.15}
-          transparent={true}
-        />
-      </div>
+    <div className="min-h-screen flex flex-col items-center justify-center p-3 sm:p-6 bg-[#0b120e] text-[#e2f5e7] selection:bg-[#8fe3a0] selection:text-[#0b120e] relative overflow-x-hidden">
+      {/* Subtle CRT scanline overlay */}
+      <div className="scanlines-overlay" />
 
-      {/* Ambient Radial Vignette & Depth Mask - gives breathing room around center elements */}
+      {/* Ambient background depth */}
       <div 
         className="fixed inset-0 z-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 75% 65% at 50% 40%, rgba(15, 15, 15, 0.72) 0%, rgba(15, 15, 15, 0.94) 70%, #0F0F0F 100%)'
-        }}
-      />
-      <div 
-        className="fixed inset-0 z-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle 500px at 50% 35%, rgba(93, 214, 44, 0.07) 0%, transparent 70%)'
+          background: 'radial-gradient(ellipse 70% 60% at 50% 30%, rgba(143, 227, 160, 0.04) 0%, rgba(11, 18, 14, 0.95) 75%, #070c09 100%)'
         }}
       />
 
-      {/* Toast Notification Container */}
+      {/* Toast Notification */}
       {toast && (
         <Toast
           key={toast.id}
@@ -120,98 +101,77 @@ export default function App() {
         />
       )}
 
-      {/* Top Header Navigation — Dark Charcoal with thin Forest/Moss Green accent border */}
-      <header className="glass-nav sticky top-0 z-40 px-4 sm:px-6 py-3 border-b border-[#337418]/40 bg-[#202020]/90 backdrop-blur-md shadow-lg">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-          {/* Circular Shield Logo & App Name */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#0F0F0F] border border-[#5DD62C] flex items-center justify-center text-[#5DD62C] shadow-[0_0_10px_rgba(93,214,44,0.25)]">
-              <Shield className="w-4 h-4" />
-            </div>
-            <span className="text-sm sm:text-base font-bold tracking-tight text-white">
-              Covert Chatter
-            </span>
+      {/* Main Terminal Frame with Soft Corners */}
+      <div className="covert-frame w-full max-w-4xl relative z-10 animate-fade-in my-auto">
+        {/* Top Status Bar */}
+        <div className="statusbar">
+          <div className="brand">
+            <div className="brand-icon">◆</div>
+            <span>COVERT CHATTER</span>
           </div>
 
-          {/* Connection Status Pill Badge with Neon Glow */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {identity && !fatalError && (
-              <div className="hidden md:flex items-center gap-1.5 text-[11px] text-[#9E9E9E] mr-1 font-mono">
-                <span>ID: {identity.fingerprint.slice(0, 6)}...</span>
-              </div>
+              <span className="hidden sm:inline font-mono text-[10px] text-[#5c9a6b]">
+                ID: {identity.fingerprint.slice(0, 8)}...
+              </span>
             )}
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#202020] text-[#5DD62C] border border-[#5DD62C] shadow-[0_0_12px_rgba(93,214,44,0.25)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#5DD62C] animate-pulse" />
-              <span>{verifiedPeer ? 'Connected' : 'Encrypted'}</span>
-            </span>
+            <div className="pill-encrypted">
+              <span className="dot" />
+              <span>{verifiedPeer ? 'CONNECTED' : 'ENCRYPTED'}</span>
+            </div>
           </div>
         </div>
-      </header>
 
-      {/* Main Content Area — Center-stage card presentation with breathing room */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6 relative z-10">
-        {/* Fatal Error State: Browser Incompatibility */}
-        {fatalError ? (
-          <div className="glass-panel p-8 rounded-2xl space-y-4 text-center max-w-xl mx-auto mt-8 animate-fade-in border-rose-500/50 bg-[#202020]/95 shadow-2xl">
-            <div className="w-12 h-12 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-500 mx-auto">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-            <h2 className="text-lg font-bold text-white">Secure Storage Unavailable</h2>
-            <p className="text-sm text-slate-300 leading-relaxed">{fatalError}</p>
-            <div className="pt-2">
-              <button
-                onClick={loadIdentity}
-                className="btn-primary text-xs py-2 px-4 inline-flex items-center gap-2"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Retry Connection</span>
-              </button>
-            </div>
-          </div>
-        ) : isLoading ? (
-          /* Loading State */
-          <div className="glass-panel p-12 rounded-2xl text-center max-w-md mx-auto my-8 space-y-3 animate-pulse bg-[#202020]/95 border-[#337418]/30 shadow-2xl">
-            <div className="w-10 h-10 rounded-xl bg-[#0F0F0F] border border-[#5DD62C] flex items-center justify-center text-[#5DD62C] mx-auto shadow-[0_0_12px_rgba(93,214,44,0.25)]">
-              <RefreshCw className="w-5 h-5 animate-spin" />
-            </div>
-            <h3 className="text-sm font-semibold text-white">Initializing Keystore</h3>
-            <p className="text-xs text-slate-400">Loading non-extractable cryptographic keypairs...</p>
-          </div>
-        ) : (
-          <>
-            {/* Streamlined Segmented Control Navigation with Elevated Shadow */}
-            <div className="flex items-center justify-center">
-              <nav
-                className="inline-flex p-1.5 bg-[#202020]/95 backdrop-blur-md border border-[#337418]/50 rounded-2xl max-w-full shadow-[0_12px_30px_-5px_rgba(0,0,0,0.8),0_0_15px_rgba(93,214,44,0.12)]"
-                aria-label="Navigation Tabs"
-              >
+        {/* Tab Switcher */}
+        <div className="tabs-header">
+          <nav className="tabs-wrap" aria-label="Navigation Tabs">
+            <button
+              onClick={() => setActiveTab('connect')}
+              className={`tab-btn ${activeTab === 'connect' ? 'active' : ''}`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>💬 CHAT &amp; PAIR</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('my-identity')}
+              className={`tab-btn ${activeTab === 'my-identity' ? 'active' : ''}`}
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span>▦ MY IDENTITY</span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Main Tab Content */}
+        <div className="p-4 sm:p-6">
+          {fatalError ? (
+            <div className="p-8 rounded-2xl space-y-4 text-center max-w-xl mx-auto my-4 bg-[#18281e] border border-rose-500/40 shadow-xl animate-fade-in">
+              <div className="w-12 h-12 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-400 mx-auto">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h2 className="text-base font-bold text-white">Secure Storage Unavailable</h2>
+              <p className="text-xs text-[#7fa889] leading-relaxed">{fatalError}</p>
+              <div className="pt-2">
                 <button
-                  onClick={() => setActiveTab('connect')}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
-                    activeTab === 'connect'
-                      ? 'bg-[#5DD62C] text-[#0F0F0F] shadow-[0_0_14px_rgba(93,214,44,0.4)]'
-                      : 'text-slate-300 hover:text-white hover:bg-[#282828]'
-                  }`}
+                  onClick={loadIdentity}
+                  className="btn btn-primary text-xs py-2 px-4 inline-flex items-center gap-2"
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Chat & Pair</span>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Retry Connection</span>
                 </button>
-
-                <button
-                  onClick={() => setActiveTab('my-identity')}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
-                    activeTab === 'my-identity'
-                      ? 'bg-[#5DD62C] text-[#0F0F0F] shadow-[0_0_14px_rgba(93,214,44,0.4)]'
-                      : 'text-slate-300 hover:text-white hover:bg-[#282828]'
-                  }`}
-                >
-                  <QrCode className="w-4 h-4" />
-                  <span>My Identity</span>
-                </button>
-              </nav>
+              </div>
             </div>
-
-            {/* Active Tab View with Depth Elevation */}
+          ) : isLoading ? (
+            <div className="p-12 rounded-2xl text-center max-w-md mx-auto my-8 space-y-3 bg-[#111c14] border border-[#24392b] animate-pulse">
+              <div className="w-10 h-10 rounded-xl bg-[#0b120e] border border-[#8fe3a0] flex items-center justify-center text-[#8fe3a0] mx-auto shadow-[0_0_12px_rgba(143,227,160,0.2)]">
+                <RefreshCw className="w-5 h-5 animate-spin" />
+              </div>
+              <h3 className="text-xs font-bold text-white font-mono uppercase tracking-wider">Initializing Keystore</h3>
+              <p className="text-xs text-[#5c9a6b]">Loading cryptographic keypairs in volatile memory...</p>
+            </div>
+          ) : (
             <div className="relative">
               {activeTab === 'connect' && (
                 <ConnectRoom
@@ -230,33 +190,36 @@ export default function App() {
                 />
               )}
             </div>
-          </>
-        )}
-      </main>
+          )}
+        </div>
 
-      {/* Footer Area with Tagline and Subtle Security Details Link */}
-      <footer className="py-6 text-center text-xs text-slate-400 border-t border-[#337418]/25 mt-auto px-4 bg-[#0F0F0F]">
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3">
-          <p>
-            Covert Chatter • End-to-End Encrypted (AES-256-GCM) • Ephemeral Volatile Memory
-          </p>
-          <span className="hidden sm:inline text-slate-600">•</span>
+        {/* Frame Footer */}
+        <div className="frame-footer">
+          <div>
+            <span>COVERT CHATTER</span>
+            <span className="sep">·</span>
+            <span>AES-256-GCM E2E</span>
+            <span className="sep">·</span>
+            <span>EPHEMERAL MEMORY</span>
+            <span className="term-cursor" />
+          </div>
+
           <button
             type="button"
             onClick={() => setShowKeyDetailsModal(true)}
-            className="inline-flex items-center gap-1.5 text-xs text-[#5DD62C] hover:text-[#6DE73B] transition-colors py-1.5 px-3 rounded-lg hover:bg-[#202020] touch-manipulation focus:outline-none focus-visible:ring-1 focus-visible:ring-[#5DD62C]"
+            className="lock-btn"
             title="View cryptographic key details and security architecture"
           >
-            <Lock className="w-3 h-3 text-[#5DD62C]" />
-            <span>Security details</span>
+            <Lock className="w-3 h-3 text-[#ffcf6b]" />
+            <span>SECURITY DETAILS</span>
           </button>
         </div>
-      </footer>
+      </div>
 
       {/* Key Details Modal Overlay */}
       {showKeyDetailsModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowKeyDetailsModal(false);
@@ -266,18 +229,18 @@ export default function App() {
           aria-modal="true"
           aria-labelledby="key-details-title"
         >
-          <div className="bg-[#202020] rounded-2xl border border-[#337418]/50 shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
+          <div className="bg-[#131f17] rounded-2xl border border-[#24392b] shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#337418]/30 bg-[#161616]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#24392b] bg-[#0e1811]">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#0F0F0F] border border-[#5DD62C] rounded-xl text-[#5DD62C] shadow-[0_0_10px_rgba(93,214,44,0.2)]">
+                <div className="p-2 bg-[#0b120e] border border-[#8fe3a0] rounded-xl text-[#8fe3a0] shadow-[0_0_10px_rgba(143,227,160,0.2)]">
                   <Lock className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 id="key-details-title" className="text-sm font-bold text-white">
-                    Security & Key Details
+                  <h3 id="key-details-title" className="text-sm font-bold text-white font-mono">
+                    Security &amp; Key Details
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-[#5c9a6b]">
                     Cryptographic identities and sandboxed keystore architecture
                   </p>
                 </div>
@@ -285,7 +248,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowKeyDetailsModal(false)}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-[#282828] rounded-lg transition-colors"
+                className="p-1.5 text-[#5c9a6b] hover:text-[#8fe3a0] hover:bg-[#18281e] rounded-lg transition-colors"
                 aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
@@ -293,7 +256,7 @@ export default function App() {
             </div>
 
             {/* Modal Scrollable Content */}
-            <div className="overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#0F0F0F]">
+            <div className="overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#0b120e]">
               <KeyDetails identity={identity} onShowToast={showToast} />
             </div>
           </div>

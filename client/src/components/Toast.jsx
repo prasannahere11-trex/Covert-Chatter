@@ -11,17 +11,17 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
   }, [duration, onClose]);
 
   const icons = {
-    success: <CheckCircle2 className="w-4 h-4 text-[#5DD62C] shrink-0" />,
-    warning: <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />,
+    success: <CheckCircle2 className="w-4 h-4 text-[#8fe3a0] shrink-0" />,
+    warning: <AlertTriangle className="w-4 h-4 text-[#ffcf6b] shrink-0" />,
     error: <XCircle className="w-4 h-4 text-rose-400 shrink-0" />,
-    info: <Info className="w-4 h-4 text-[#5DD62C] shrink-0" />
+    info: <Info className="w-4 h-4 text-[#8fe3a0] shrink-0" />
   };
 
   const borders = {
-    success: 'border-[#5DD62C] bg-[#202020] text-white shadow-[0_0_15px_rgba(93,214,44,0.25)]',
-    warning: 'border-amber-400/60 bg-[#202020] text-white shadow-lg',
-    error: 'border-rose-400/60 bg-[#202020] text-white shadow-lg',
-    info: 'border-[#337418]/60 bg-[#202020] text-white shadow-lg'
+    success: 'border-[#8fe3a0] bg-[#111c14] text-[#e2f5e7] shadow-[0_4px_20px_rgba(143,227,160,0.15)]',
+    warning: 'border-[#ffcf6b]/70 bg-[#111c14] text-[#e2f5e7] shadow-lg',
+    error: 'border-rose-400/70 bg-[#111c14] text-[#e2f5e7] shadow-lg',
+    info: 'border-[#24392b] bg-[#111c14] text-[#e2f5e7] shadow-lg'
   };
 
   return (
@@ -30,10 +30,10 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
       role="alert"
     >
       {icons[type] || icons.info}
-      <p className="text-white font-medium leading-snug flex-1">{message}</p>
+      <p className="text-[#e2f5e7] font-medium leading-snug flex-1 font-mono">{message}</p>
       <button
         onClick={onClose}
-        className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-[#282828]"
+        className="text-[#5c9a6b] hover:text-white transition-colors p-1 rounded-lg hover:bg-[#18281e]"
         aria-label="Dismiss toast"
       >
         <X className="w-3.5 h-3.5" />
