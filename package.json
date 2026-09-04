@@ -9,6 +9,10 @@
     "dev:server": "npm --prefix server start",
     "dev:client": "npm --prefix client run dev"
   },
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "engines": {
     "node": ">=18.0.0"
   },

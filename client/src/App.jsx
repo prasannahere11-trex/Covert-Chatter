@@ -13,7 +13,6 @@ import MyIdentity from './components/MyIdentity';
 import KeyDetails from './components/KeyDetails';
 import ConnectRoom from './components/ConnectRoom';
 import Toast from './components/Toast';
-import PixelBlast from './components/PixelBlast/PixelBlast';
 import { getOrCreateIdentity, resetIdentity } from './utils/db';
 
 export default function App() {

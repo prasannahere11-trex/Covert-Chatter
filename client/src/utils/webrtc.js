@@ -19,7 +19,7 @@
 
 import { deriveSharedSecret } from './crypto';
 import { encryptMessage, decryptMessage, signMessage, verifyMessage } from './encryption';
-import { createEphemeralPayload, DEFAULT_TTL_SECONDS } from './ephemeral';
+import { createEphemeralPayload, DEFAULT_TTL_SECONDS, BURN_ON_READ_DELAY_SECONDS } from './ephemeral';
 import { sendFileStream, FileReceiver, BUFFER_LOW_THRESHOLD } from './fileTransfer';
 
 /**
@@ -598,6 +598,18 @@ export class PeerSession {
           return;
         }
 
+        // ⏱️ Synchronized Disappearing Timer Control
+        if (payload.type === 'ttl-change' && typeof payload.ttlSeconds === 'number') {
+          this.callbacks.onTtlChanged?.(payload.ttlSeconds);
+          return;
+        }
+
+        // 🔥 Synchronized Burn-on-Read Trigger
+        if (payload.type === 'burn-trigger' && payload.id) {
+          this.callbacks.onBurnTriggered?.(payload.id, payload.burnDelay || BURN_ON_READ_DELAY_SECONDS);
+          return;
+        }
+
         // Check if message is encrypted format { id, iv, ciphertext, signature, timestamp }
         if (payload.ciphertext && payload.iv && payload.signature) {
           // 1. Digital Signature Verification (ECDSA P-256)
@@ -637,7 +649,7 @@ export class PeerSession {
               sentAt: payload.timestamp || Date.now(),
               ttlSeconds: DEFAULT_TTL_SECONDS,
               burnOnRead: false,
-              burnDelay: 5,
+              burnDelay: BURN_ON_READ_DELAY_SECONDS,
             };
           }
 
@@ -658,7 +670,7 @@ export class PeerSession {
             ttlSeconds,
             expiresAt: localExpiresAt,
             burnOnRead: Boolean(innerPayload.burnOnRead),
-            burnDelay: innerPayload.burnDelay || 5,
+            burnDelay: innerPayload.burnDelay || BURN_ON_READ_DELAY_SECONDS,
             sender: 'peer',
             timestamp: innerPayload.sentAt || payload.timestamp || Date.now(),
             isEncrypted: true,
@@ -769,6 +781,33 @@ export class PeerSession {
       options,
       onProgress,
     });
+  }
+
+  /**
+   * Send control event over direct RTCDataChannel
+   */
+  sendControl(obj) {
+    if (this.dataChannel && this.dataChannel.readyState === 'open') {
+      try {
+        this.dataChannel.send(JSON.stringify(obj));
+      } catch (err) {
+        console.warn('[WebRTC] Failed to send control message:', err);
+      }
+    }
+  }
+
+  /**
+   * Notify peer of updated disappearing messages TTL
+   */
+  sendTtlChange(ttlSeconds) {
+    this.sendControl({ type: 'ttl-change', ttlSeconds });
+  }
+
+  /**
+   * Notify peer that a burn-on-read item has been viewed and triggered
+   */
+  sendBurnTrigger(id, burnDelay = BURN_ON_READ_DELAY_SECONDS) {
+    this.sendControl({ type: 'burn-trigger', id, burnDelay });
   }
 
   /**

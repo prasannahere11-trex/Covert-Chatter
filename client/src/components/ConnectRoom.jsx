@@ -44,10 +44,12 @@ import { validatePeerIdentityPayload } from '../utils/crypto';
 import { 
   DEFAULT_TTL_SECONDS, 
   DEFAULT_FILE_TTL_SECONDS,
+  TTL_OPTIONS,
   FILE_TTL_OPTIONS,
   BURN_ON_READ_DELAY_SECONDS, 
   BACKGROUND_BLUR_PURGE_TIMEOUT_MS,
   getRemainingSeconds, 
+  formatRemainingTime,
   isMessageExpired,
   revokeFileBlobUrl 
 } from '../utils/ephemeral';
@@ -68,6 +70,8 @@ export default function ConnectRoom({
   const [copiedCode, setCopiedCode] = useState(false);
   const [messages, setMessages] = useState([]); // VOLATILE RAM INVARIANT
   const [inputText, setInputText] = useState('');
+  const [roomTtlSeconds, setRoomTtlSeconds] = useState(DEFAULT_TTL_SECONDS); // Synchronized Room Disappearing Timer
+  const [showTtlDropdown, setShowTtlDropdown] = useState(false);
   const [burnOnReadEnabled, setBurnOnReadEnabled] = useState(false);
   const [customServerUrl, setCustomServerUrl] = useState(getDefaultSignalingUrl());
   const [showServerConfig, setShowServerConfig] = useState(false);
@@ -184,10 +188,14 @@ export default function ConnectRoom({
     setMessages((prev) =>
       prev.map((msg) => {
         if (msg.id === msgId && msg.burnOnRead && !msg.burnDeadline) {
+          const deadline = Date.now() + (msg.burnDelay || BURN_ON_READ_DELAY_SECONDS) * 1000;
+          if (sessionRef.current) {
+            sessionRef.current.sendBurnTrigger(msgId, msg.burnDelay || BURN_ON_READ_DELAY_SECONDS);
+          }
           return {
             ...msg,
             renderedAt: Date.now(),
-            burnDeadline: Date.now() + (msg.burnDelay || BURN_ON_READ_DELAY_SECONDS) * 1000,
+            burnDeadline: deadline,
           };
         }
         return msg;
@@ -206,10 +214,14 @@ export default function ConnectRoom({
           // For text messages, trigger on render
           if (!msg.type || msg.type === 'text') {
             updated = true;
+            const deadline = now + (msg.burnDelay || BURN_ON_READ_DELAY_SECONDS) * 1000;
+            if (sessionRef.current) {
+              sessionRef.current.sendBurnTrigger(msg.id, msg.burnDelay || BURN_ON_READ_DELAY_SECONDS);
+            }
             return {
               ...msg,
               renderedAt: now,
-              burnDeadline: now + (msg.burnDelay || BURN_ON_READ_DELAY_SECONDS) * 1000,
+              burnDeadline: deadline,
             };
           }
         }
@@ -509,6 +521,37 @@ export default function ConnectRoom({
         onFileProgress: (fileProgressData) => {
           handleIncomingMessageOrFile(fileProgressData);
         },
+        onTtlChanged: (newTtl) => {
+          setRoomTtlSeconds(newTtl);
+          setFileTtlSeconds(Math.max(newTtl, 60));
+          const opt = TTL_OPTIONS.find((o) => o.seconds === newTtl);
+          const formatted = opt ? opt.label : `${newTtl}s`;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              type: 'system',
+              text: `⏱️ Disappearing timer set to ${formatted}`,
+              timestamp: Date.now(),
+            },
+          ]);
+          onShowToast(`⏱️ Disappearing timer set to ${formatted}`, 'info');
+        },
+        onBurnTriggered: (msgId, burnDelay) => {
+          const deadline = Date.now() + (burnDelay || BURN_ON_READ_DELAY_SECONDS) * 1000;
+          setMessages((prev) =>
+            prev.map((msg) => {
+              if (msg.id === msgId) {
+                return {
+                  ...msg,
+                  renderedAt: Date.now(),
+                  burnDeadline: Math.min(msg.burnDeadline || deadline, deadline),
+                };
+              }
+              return msg;
+            })
+          );
+        },
       },
       myIdentity,
       peerToUse,
@@ -517,6 +560,27 @@ export default function ConnectRoom({
 
     sessionRef.current = session;
     return session;
+  };
+
+  const handleChangeRoomTtl = (seconds) => {
+    setRoomTtlSeconds(seconds);
+    setFileTtlSeconds(Math.max(seconds, 60));
+    setShowTtlDropdown(false);
+    if (sessionRef.current) {
+      sessionRef.current.sendTtlChange(seconds);
+    }
+    const opt = TTL_OPTIONS.find((o) => o.seconds === seconds);
+    const formatted = opt ? opt.label : `${seconds}s`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: 'system',
+        text: `⏱️ Disappearing timer set to ${formatted}`,
+        timestamp: Date.now(),
+      },
+    ]);
+    onShowToast(`Disappearing timer set to ${formatted}`, 'success');
   };
 
   const handleStartChat = async () => {
@@ -559,7 +623,7 @@ export default function ConnectRoom({
 
     try {
       const sentMsg = await sessionRef.current.sendMessage(textToSend, {
-        ttlSeconds: DEFAULT_TTL_SECONDS,
+        ttlSeconds: roomTtlSeconds,
         burnOnRead: burnOnReadEnabled,
       });
       setMessages((prev) => [...prev, sentMsg]);
@@ -1115,69 +1179,144 @@ export default function ConnectRoom({
                 </div>
               </div>
 
-              {/* Options Menu Button */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowOptionsMenu(!showOptionsMenu)}
-                  className="chat-icon-btn w-9 h-9 min-w-[36px] min-h-[36px]"
-                  title="Options & Session Settings"
-                  aria-label="Options"
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
+              {/* Header Right: Disappearing Timer & Options */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Disappearing Timer Selector Pill */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowTtlDropdown(!showTtlDropdown);
+                      setShowOptionsMenu(false);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-[#0b120e] text-[#8fe3a0] border border-[#24392b] hover:border-[#8fe3a0] shadow-xs transition-all cursor-pointer select-none"
+                    title="Change Disappearing Messages Timer (Synchronized across all devices)"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-[#8fe3a0]" />
+                    <span>{formatRemainingTime(roomTtlSeconds)}</span>
+                    <ChevronDown className={`w-3 h-3 text-[#5c9a6b] transition-transform duration-200 ${showTtlDropdown ? 'rotate-180' : ''}`} />
+                  </button>
 
-                {/* Options Dropdown Menu */}
-                {showOptionsMenu && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-30" 
-                      onClick={() => setShowOptionsMenu(false)} 
-                    />
-                    <div className="absolute right-0 top-11 z-40 w-56 bg-[#131f17] rounded-2xl border border-[#24392b] p-2 shadow-2xl space-y-1 animate-scale-up">
-                      <div className="px-3 py-2 border-b border-[#24392b]">
-                        <p className="text-xs font-bold text-white font-mono">Session Options</p>
-                        <p className="text-[10px] text-[#5c9a6b] font-mono truncate">Room: {roomCode}</p>
+                  {/* Disappearing Timer Dropdown Menu */}
+                  {showTtlDropdown && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-30" 
+                        onClick={() => setShowTtlDropdown(false)} 
+                      />
+                      <div className="absolute right-0 top-11 z-40 w-52 bg-[#131f17] rounded-2xl border border-[#24392b] p-2 shadow-2xl space-y-1 animate-scale-up">
+                        <div className="px-3 py-2 border-b border-[#24392b]">
+                          <p className="text-xs font-bold text-white font-mono flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-[#8fe3a0]" />
+                            <span>Disappearing Messages</span>
+                          </p>
+                          <p className="text-[10px] text-[#5c9a6b]">Synchronized across all devices</p>
+                        </div>
+
+                        <div className="max-h-60 overflow-y-auto space-y-0.5 py-1">
+                          {TTL_OPTIONS.map((opt) => {
+                            const isSelected = roomTtlSeconds === opt.seconds;
+                            return (
+                              <button
+                                key={opt.seconds}
+                                type="button"
+                                onClick={() => handleChangeRoomTtl(opt.seconds)}
+                                className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors font-mono cursor-pointer ${
+                                  isSelected 
+                                    ? 'bg-[#8fe3a0]/15 text-[#8fe3a0] font-bold border border-[#8fe3a0]/30'
+                                    : 'text-[#7fa889] hover:text-[#8fe3a0] hover:bg-[#18281e]'
+                                }`}
+                              >
+                                <span>{opt.label}</span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-[#8fe3a0]" />}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
+                    </>
+                  )}
+                </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleCopyRoomCode();
-                          setShowOptionsMenu(false);
-                        }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-[#7fa889] hover:text-[#8fe3a0] hover:bg-[#18281e] flex items-center gap-2 transition-colors font-medium cursor-pointer"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-[#8fe3a0]" />
-                        <span>Copy Room Code</span>
-                      </button>
+                {/* Options Menu Button */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowOptionsMenu(!showOptionsMenu);
+                      setShowTtlDropdown(false);
+                    }}
+                    className="chat-icon-btn w-9 h-9 min-w-[36px] min-h-[36px]"
+                    title="Options & Session Settings"
+                    aria-label="Options"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowSecurityModal(true);
-                          setShowOptionsMenu(false);
-                        }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-[#7fa889] hover:text-[#8fe3a0] hover:bg-[#18281e] flex items-center gap-2 transition-colors font-medium cursor-pointer"
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5 text-[#8fe3a0]" />
-                        <span>Security &amp; Encryption</span>
-                      </button>
+                  {/* Options Dropdown Menu */}
+                  {showOptionsMenu && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-30" 
+                        onClick={() => setShowOptionsMenu(false)} 
+                      />
+                      <div className="absolute right-0 top-11 z-40 w-56 bg-[#131f17] rounded-2xl border border-[#24392b] p-2 shadow-2xl space-y-1 animate-scale-up">
+                        <div className="px-3 py-2 border-b border-[#24392b]">
+                          <p className="text-xs font-bold text-white font-mono">Session Options</p>
+                          <p className="text-[10px] text-[#5c9a6b] font-mono truncate">Room: {roomCode}</p>
+                        </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowOptionsMenu(false);
-                          handleDisconnect();
-                        }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs text-rose-400 hover:bg-rose-500/15 flex items-center gap-2 transition-colors font-semibold cursor-pointer border-t border-[#24392b] mt-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                        <span>Leave Room &amp; Wipe</span>
-                      </button>
-                    </div>
-                  </>
-                )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowTtlDropdown(true);
+                            setShowOptionsMenu(false);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl text-xs text-[#7fa889] hover:text-[#8fe3a0] hover:bg-[#18281e] flex items-center gap-2 transition-colors font-medium cursor-pointer"
+                        >
+                          <Clock className="w-3.5 h-3.5 text-[#8fe3a0]" />
+                          <span>Disappearing Timer ({formatRemainingTime(roomTtlSeconds)})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleCopyRoomCode();
+                            setShowOptionsMenu(false);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl text-xs text-[#7fa889] hover:text-[#8fe3a0] hover:bg-[#18281e] flex items-center gap-2 transition-colors font-medium cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5 text-[#8fe3a0]" />
+                          <span>Copy Room Code</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSecurityModal(true);
+                            setShowOptionsMenu(false);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl text-xs text-[#7fa889] hover:text-[#8fe3a0] hover:bg-[#18281e] flex items-center gap-2 transition-colors font-medium cursor-pointer"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#8fe3a0]" />
+                          <span>Security &amp; Encryption</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowOptionsMenu(false);
+                            handleDisconnect();
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl text-xs text-rose-400 hover:bg-rose-500/15 flex items-center gap-2 transition-colors font-semibold cursor-pointer border-t border-[#24392b] mt-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                          <span>Leave Room &amp; Wipe</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1241,6 +1380,17 @@ export default function ConnectRoom({
                 </div>
               ) : (
                 messages.map((msg) => {
+                  if (msg.type === 'system') {
+                    return (
+                      <div key={msg.id} className="flex justify-center my-2 animate-fade-in">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#111c14] border border-[#24392b] text-[#8fe3a0] text-[11px] font-mono shadow-xs">
+                          <Clock className="w-3 h-3 text-[#8fe3a0]" />
+                          <span>{msg.text}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const isMe = msg.sender === 'me';
                   const remainingSecs = getRemainingSeconds(msg, currentTime);
                   const isBurn = msg.burnOnRead;
@@ -1262,12 +1412,12 @@ export default function ConnectRoom({
                           {isBurn ? (
                             <span className="inline-flex items-center gap-1 font-bold text-[10px] text-[#0b120e] bg-[#ffcf6b] border border-[#ffcf6b] px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(255,207,107,0.35)]">
                               <Flame className="w-2.5 h-2.5 text-[#0b120e] fill-[#0b120e] animate-pulse" />
-                              <span>{remainingSecs}s</span>
+                              <span>{formatRemainingTime(remainingSecs)}</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 font-mono text-[10px] text-[#8fe3a0] bg-[#111c14] border border-[#24392b] px-1.5 py-0.5 rounded-full shadow-xs">
                               <Clock className="w-2.5 h-2.5 text-[#8fe3a0]" />
-                              <span>{remainingSecs}s</span>
+                              <span>{formatRemainingTime(remainingSecs)}</span>
                             </span>
                           )}
                           <div className="flex items-center gap-1 text-[10px] font-mono text-[#5c9a6b]">
@@ -1476,12 +1626,12 @@ export default function ConnectRoom({
                               {isBurn ? (
                                 <span className="inline-flex items-center gap-1 font-bold text-[10px] text-[#0b120e] bg-[#ffcf6b] border border-[#ffcf6b] px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(255,207,107,0.35)]">
                                   <Flame className="w-2.5 h-2.5 text-[#0b120e] fill-[#0b120e] animate-pulse" />
-                                  <span>{remainingSecs}s</span>
+                                  <span>{formatRemainingTime(remainingSecs)}</span>
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 font-mono text-[10px] text-[#8fe3a0] bg-[#111c14] border border-[#24392b] px-1.5 py-0.5 rounded-full shadow-xs">
                                   <Clock className="w-2.5 h-2.5 text-[#8fe3a0]" />
-                                  <span>{remainingSecs}s</span>
+                                  <span>{formatRemainingTime(remainingSecs)}</span>
                                 </span>
                               )}
                               <span className="text-[10px] font-mono text-[#5c9a6b]">{timeStr}</span>
@@ -1569,8 +1719,18 @@ export default function ConnectRoom({
                   />
                 </div>
 
-                {/* Right buttons (burn-toggle, send) */}
+                {/* Right buttons (timer-select, burn-toggle, send) */}
                 <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowTtlDropdown(!showTtlDropdown)}
+                    className="chat-icon-btn w-10 h-10 min-w-[40px] min-h-[40px]"
+                    title={`Disappearing Timer: ${formatRemainingTime(roomTtlSeconds)} (Click to change)`}
+                    aria-label="Change disappearing timer"
+                  >
+                    <Clock className="w-4.5 h-4.5 text-[#8fe3a0]" />
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setBurnOnReadEnabled(!burnOnReadEnabled)}
@@ -1579,7 +1739,7 @@ export default function ConnectRoom({
                         ? 'bg-[#ffcf6b] text-[#0b120e] border-[#ffcf6b] shadow-[0_0_12px_rgba(255,207,107,0.35)]'
                         : ''
                     }`}
-                    title={burnOnReadEnabled ? 'Burn on Read: Active (5s)' : 'Turn on Burn-on-Read'}
+                    title={burnOnReadEnabled ? `Burn on Read: Active (${BURN_ON_READ_DELAY_SECONDS}s)` : 'Turn on Burn-on-Read'}
                     aria-label="Toggle burn on read"
                   >
                     <Flame className={`w-4.5 h-4.5 ${burnOnReadEnabled ? 'fill-[#0b120e] text-[#0b120e]' : ''}`} />

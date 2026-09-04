@@ -23,8 +23,19 @@
 
 export const DEFAULT_TTL_SECONDS = 60;
 export const DEFAULT_FILE_TTL_SECONDS = 300; // 5 minutes default for files
-export const BURN_ON_READ_DELAY_SECONDS = 15; // 15 seconds burn countdown for media
+export const BURN_ON_READ_DELAY_SECONDS = 10; // 10 seconds burn countdown for media & burn-on-read
 export const BACKGROUND_BLUR_PURGE_TIMEOUT_MS = 180000; // 3 minutes grace period for mobile app switches (gallery/camera)
+
+export const TTL_OPTIONS = [
+  { label: '10 sec (Fast)', seconds: 10 },
+  { label: '30 sec', seconds: 30 },
+  { label: '60 sec (1m)', seconds: 60 },
+  { label: '3 min', seconds: 180 },
+  { label: '5 min', seconds: 300 },
+  { label: '10 min', seconds: 600 },
+  { label: '1 hour', seconds: 3600 },
+  { label: '24 hours', seconds: 86400 },
+];
 
 export const FILE_TTL_OPTIONS = [
   { label: '60s', seconds: 60 },
@@ -32,6 +43,32 @@ export const FILE_TTL_OPTIONS = [
   { label: '5 min', seconds: 300 },
   { label: '10 min', seconds: 600 },
 ];
+
+/**
+ * Format remaining seconds into clean, human-readable countdown string (e.g. "45s", "2m 15s", "1h 30m").
+ * 
+ * @param {number} seconds
+ * @returns {string}
+ */
+export function formatRemainingTime(seconds) {
+  if (typeof seconds !== 'number' || seconds < 0) return '0s';
+  if (seconds >= 86400) {
+    const days = Math.floor(seconds / 86400);
+    const hrs = Math.floor((seconds % 86400) / 3600);
+    return hrs > 0 ? `${days}d ${hrs}h` : `${days}d`;
+  }
+  if (seconds >= 3600) {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+  }
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  }
+  return `${seconds}s`;
+}
 
 /**
  * Safely revoke a Blob URL if present in an ephemeral message record.
