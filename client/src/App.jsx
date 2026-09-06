@@ -77,7 +77,7 @@ export default function App() {
   }, [showKeyDetailsModal]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-3 sm:p-6 bg-[#0b120e] text-[#e2f5e7] selection:bg-[#8fe3a0] selection:text-[#0b120e] relative overflow-x-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center p-2 sm:p-6 bg-[#0b120e] text-[#e2f5e7] selection:bg-[#8fe3a0] selection:text-[#0b120e] relative overflow-x-hidden app-container">
       {/* Subtle CRT scanline overlay */}
       <div className="scanlines-overlay" />
 
@@ -109,7 +109,7 @@ export default function App() {
             <span>COVERT CHATTER</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {identity && !fatalError && (
               <span className="hidden sm:inline font-mono text-[10px] text-[#5c9a6b]">
                 ID: {identity.fingerprint.slice(0, 8)}...
@@ -144,7 +144,7 @@ export default function App() {
         </div>
 
         {/* Main Tab Content */}
-        <div className="p-4 sm:p-6">
+        <div className="p-2 sm:p-6">
           {fatalError ? (
             <div className="p-8 rounded-2xl space-y-4 text-center max-w-xl mx-auto my-4 bg-[#18281e] border border-rose-500/40 shadow-xl animate-fade-in">
               <div className="w-12 h-12 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-400 mx-auto">
