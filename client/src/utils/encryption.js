@@ -31,12 +31,15 @@ const peerEcdsaKeyCache = new Map();
 
 /**
  * Encrypt a plaintext string using an AES-GCM 256-bit session key.
+ * Optionally binds a monotonically increasing sequence number into AES-GCM
+ * Additional Authenticated Data (AAD) for replay attack protection.
  * 
  * @param {CryptoKey} sessionKey - AES-GCM CryptoKey derived via ECDH
  * @param {string} plaintext - Plain text message
- * @returns {Promise<{ iv: number[], ciphertext: number[] }>}
+ * @param {number|null} [sequenceNumber=null] - Optional monotonically increasing sequence number
+ * @returns {Promise<{ iv: number[], ciphertext: number[], seq?: number }>}
  */
-export async function encryptMessage(sessionKey, plaintext) {
+export async function encryptMessage(sessionKey, plaintext, sequenceNumber = null) {
   if (!sessionKey) {
     throw new Error('Session key is required for message encryption.');
   }
@@ -47,32 +50,48 @@ export async function encryptMessage(sessionKey, plaintext) {
   // 2. Encode UTF-8 plaintext to byte array
   const plaintextBytes = textEncoder.encode(plaintext);
 
-  // 3. Encrypt with AES-GCM (automatically generates 128-bit authentication tag appended to ciphertext)
+  // 3. Build AES-GCM encryption parameters with optional AAD
+  const gcmParams = {
+    name: 'AES-GCM',
+    iv: iv,
+    tagLength: 128, // Full 128-bit authentication tag
+  };
+
+  if (typeof sequenceNumber === 'number') {
+    gcmParams.additionalData = textEncoder.encode(`seq:${sequenceNumber}`);
+  }
+
+  // 4. Encrypt with AES-GCM (authenticates plaintext, IV, and AAD together)
   const ciphertextBuffer = await window.crypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv: iv,
-      tagLength: 128, // Full 128-bit authentication tag
-    },
+    gcmParams,
     sessionKey,
     plaintextBytes
   );
 
-  return {
+  const result = {
     iv: Array.from(iv),
     ciphertext: Array.from(new Uint8Array(ciphertextBuffer)),
   };
+
+  if (typeof sequenceNumber === 'number') {
+    result.seq = sequenceNumber;
+  }
+
+  return result;
 }
 
 /**
- * Decrypt an AES-GCM ciphertext using the session key and message IV.
+ * Decrypt an AES-GCM ciphertext using the session key, message IV, and optional sequence number AAD.
+ * FAILS CLOSED: If AAD, IV, or ciphertext authentication fails, immediately throws an error
+ * without returning any partial data.
  * 
  * @param {CryptoKey} sessionKey - AES-GCM CryptoKey derived via ECDH
  * @param {number[]|Uint8Array} ivArray - 12-byte initialization vector
  * @param {number[]|Uint8Array} ciphertextArray - Ciphertext bytes including authentication tag
+ * @param {number|null} [sequenceNumber=null] - Expected sequence number in AAD
  * @returns {Promise<string>} Decrypted plaintext
  */
-export async function decryptMessage(sessionKey, ivArray, ciphertextArray) {
+export async function decryptMessage(sessionKey, ivArray, ciphertextArray, sequenceNumber = null) {
   if (!sessionKey) {
     throw new Error('Session key is required for message decryption.');
   }
@@ -80,21 +99,27 @@ export async function decryptMessage(sessionKey, ivArray, ciphertextArray) {
   const iv = new Uint8Array(ivArray);
   const ciphertext = new Uint8Array(ciphertextArray);
 
+  const gcmParams = {
+    name: 'AES-GCM',
+    iv: iv,
+    tagLength: 128,
+  };
+
+  if (typeof sequenceNumber === 'number') {
+    gcmParams.additionalData = textEncoder.encode(`seq:${sequenceNumber}`);
+  }
+
   try {
     const decryptedBuffer = await window.crypto.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv: iv,
-        tagLength: 128,
-      },
+      gcmParams,
       sessionKey,
       ciphertext
     );
 
     return textDecoder.decode(decryptedBuffer);
   } catch (err) {
-    console.error('[E2EE] Decryption authentication failed (ciphertext corrupted or tampered):', err);
-    throw new Error('Message authentication failed: Ciphertext or IV was tampered with.');
+    console.error('[E2EE] Decryption authentication failed (ciphertext corrupted, tampered, or replay AAD mismatch):', err);
+    throw new Error('Message authentication failed: Ciphertext, IV, or sequence number was tampered with.');
   }
 }
 

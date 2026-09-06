@@ -117,6 +117,11 @@ export class PeerSession {
     this.myEphemeralSignature = null;
     this.peerEphemeralJWK = null;
 
+    // Monotonically increasing sequence counters for replay protection (Task 2)
+    // Strictly scoped to the lifetime of the ephemeral session key
+    this.sendSequence = 0;
+    this.receiveSequence = 0;
+
     // ICE Candidate buffering: Holds candidates received before setRemoteDescription() finishes
     this.isRemoteDescriptionSet = false;
     this.queuedIceCandidates = [];
@@ -130,6 +135,8 @@ export class PeerSession {
     try {
       this.ephemeralKeyPair = await generateEphemeralAgreementKeypair();
       this.myEphemeralJWK = await exportEphemeralPublicKey(this.ephemeralKeyPair.publicKey);
+      this.sendSequence = 0;
+      this.receiveSequence = 0;
       if (this.myIdentity?.signingKeyPair?.privateKey) {
         this.myEphemeralSignature = await signEphemeralAgreementKey(
           this.myIdentity.signingKeyPair.privateKey,
@@ -617,6 +624,9 @@ export class PeerSession {
                 this.ephemeralKeyPair.privateKey,
                 payload.ephemeralEcdh
               );
+              // Reset sequence counters scoped to the fresh session key
+              this.sendSequence = 0;
+              this.receiveSequence = 0;
               console.log('[E2EE] Derived fresh ephemeral AES-256-GCM session key successfully.');
               this.ensureFileReceiver();
 
@@ -660,8 +670,15 @@ export class PeerSession {
           return;
         }
 
-        // Check if message is encrypted format { id, iv, ciphertext, signature, timestamp }
+        // Check if message is encrypted format { id, iv, ciphertext, signature, seq, timestamp }
         if (payload.ciphertext && payload.iv && payload.signature) {
+          const incomingSeq = payload.seq;
+          // Replay Protection: Reject any message where sequenceNumber <= receiveSequence
+          if (typeof incomingSeq !== 'number' || incomingSeq <= this.receiveSequence) {
+            console.warn(`[E2EE] Replay attack detected or invalid sequence (${incomingSeq} <= ${this.receiveSequence}). Dropping message.`);
+            return; // Drop immediately
+          }
+
           // 1. Digital Signature Verification (ECDSA P-256)
           if (this.peerIdentity?.ecdsa) {
             const isSignatureValid = await verifyMessage(
@@ -676,17 +693,27 @@ export class PeerSession {
             }
           }
 
-          // 2. Decrypt Ciphertext (AES-256-GCM)
+          // 2. Decrypt Ciphertext (AES-256-GCM) with sequence number in AAD
           if (!this.sessionKey) {
             console.warn('[E2EE] No session key available to decrypt message. Dropping payload.');
             return;
           }
 
-          const decryptedText = await decryptMessage(
-            this.sessionKey,
-            payload.iv,
-            payload.ciphertext
-          );
+          let decryptedText;
+          try {
+            decryptedText = await decryptMessage(
+              this.sessionKey,
+              payload.iv,
+              payload.ciphertext,
+              incomingSeq
+            );
+          } catch (err) {
+            console.warn('[E2EE] Decryption / AAD sequence verification failed. Dropping payload:', err);
+            return;
+          }
+
+          // Update receiveSequence only after verified AAD decryption
+          this.receiveSequence = incomingSeq;
 
           // Try parsing decrypted string as inner ephemeral JSON structure
           let innerPayload;
@@ -724,6 +751,7 @@ export class PeerSession {
             sender: 'peer',
             timestamp: innerPayload.sentAt || payload.timestamp || Date.now(),
             isEncrypted: true,
+            seq: incomingSeq,
           });
         } else {
           // Fallback unencrypted raw payload
@@ -766,21 +794,26 @@ export class PeerSession {
 
     // If E2EE session key and private signing key are present, encrypt & sign
     if (this.sessionKey && this.myIdentity?.signingKeyPair?.privateKey) {
-      // 2. Encrypt inner JSON with AES-GCM using unique 12-byte IV
-      const { iv, ciphertext } = await encryptMessage(this.sessionKey, innerJsonString);
+      // 2. Increment sequence number for replay protection
+      this.sendSequence += 1;
+      const currentSeq = this.sendSequence;
 
-      // 3. Sign ciphertext with local ECDSA private key
+      // 3. Encrypt inner JSON with AES-GCM using unique 12-byte IV and sequence in AAD
+      const { iv, ciphertext } = await encryptMessage(this.sessionKey, innerJsonString, currentSeq);
+
+      // 4. Sign ciphertext with local ECDSA private key
       const signature = await signMessage(
         this.myIdentity.signingKeyPair.privateKey,
         ciphertext
       );
 
-      // 4. Construct encrypted wire envelope
+      // 5. Construct encrypted wire envelope
       const wireEnvelope = {
         id: ephemeralPayload.id,
         iv,
         ciphertext,
         signature,
+        seq: currentSeq,
         timestamp: ephemeralPayload.sentAt,
       };
 
@@ -792,6 +825,7 @@ export class PeerSession {
         sender: 'me',
         timestamp: ephemeralPayload.sentAt,
         isEncrypted: true,
+        seq: currentSeq,
       };
     } else {
       // Fallback plain payload (if no peer identity attached)
