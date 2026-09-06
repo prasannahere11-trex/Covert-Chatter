@@ -37,7 +37,8 @@ import {
   ChevronLeft,
   Languages,
   CheckCheck,
-  Heart
+  Heart,
+  AlertTriangle
 } from 'lucide-react';
 import { PeerSession, getDefaultSignalingUrl } from '../utils/webrtc';
 import { validatePeerIdentityPayload } from '../utils/crypto';
@@ -80,6 +81,9 @@ export default function ConnectRoom({
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+
+  // Mandatory Peer Verification Gate State (Task 3)
+  const [isUnverifiedRiskAcknowledged, setIsUnverifiedRiskAcknowledged] = useState(false);
 
   // Pairing States
   const [isJoinScannerOpen, setIsJoinScannerOpen] = useState(false);
@@ -235,6 +239,12 @@ export default function ConnectRoom({
   const isSelectingFileRef = useRef(false);
 
   const handleOpenFilePicker = () => {
+    const isPeerFullyVerified = Boolean(verifiedPeer?.isExplicitlyVerified);
+    const isChatUnlocked = isPeerFullyVerified || isUnverifiedRiskAcknowledged;
+    if (!isChatUnlocked) {
+      onShowToast('Please verify peer identity or acknowledge risk to send files', 'warning');
+      return;
+    }
     isSelectingFileRef.current = true;
     fileInputRef.current?.click();
     // Keep flag true for up to 2 minutes while user browses mobile file manager
@@ -407,7 +417,7 @@ export default function ConnectRoom({
         return;
       }
 
-      const peer = validation.peerIdentity;
+      const peer = { ...validation.peerIdentity, isExplicitlyVerified: true };
       onSetVerifiedPeer(peer);
       saveSessionPeer(peer);
       await stopCameraScanner();
@@ -451,13 +461,14 @@ export default function ConnectRoom({
     try {
       const res = await validatePeerIdentityPayload(rawPeerJsonInput.trim());
       if (res.valid && res.peerIdentity) {
-        onSetVerifiedPeer(res.peerIdentity);
-        saveSessionPeer(res.peerIdentity);
+        const peer = { ...res.peerIdentity, isExplicitlyVerified: true };
+        onSetVerifiedPeer(peer);
+        saveSessionPeer(peer);
         setShowManualPeerInput(false);
         setRawPeerJsonInput('');
         onShowToast('Peer identity verified!', 'success');
         if (res.peerIdentity.room) {
-          await handleDirectJoinRoom(res.peerIdentity.room, res.peerIdentity);
+          await handleDirectJoinRoom(res.peerIdentity.room, peer);
         }
       } else {
         onShowToast(res.error || 'Invalid peer identity payload', 'error');
@@ -497,17 +508,24 @@ export default function ConnectRoom({
             messagesRef.current.forEach(revokeFileBlobUrl);
             setMessages([]);
             setAttachedFile(null);
+            setIsUnverifiedRiskAcknowledged(false);
             onShowToast(details?.message || 'Peer disconnected', 'warning');
           } else if (newStatus === 'error') {
             messagesRef.current.forEach(revokeFileBlobUrl);
             setMessages([]);
             setAttachedFile(null);
+            setIsUnverifiedRiskAcknowledged(false);
             onShowToast(details?.message || 'Connection error', 'error');
           }
         },
         onPeerIdentityLinked: (linkedPeer) => {
-          onSetVerifiedPeer(linkedPeer);
-          saveSessionPeer(linkedPeer);
+          // If the peer wasn't already explicitly verified via QR/manual validation,
+          // link it as an unverified peer to trigger the verification gate
+          if (!verifiedPeer?.isExplicitlyVerified || verifiedPeer.fingerprint !== linkedPeer.fingerprint) {
+            const unverifiedPeer = { ...linkedPeer, isExplicitlyVerified: false, isAutoLinked: true };
+            onSetVerifiedPeer(unverifiedPeer);
+            saveSessionPeer(unverifiedPeer);
+          }
         },
         onRoomCreated: (code) => {
           setRoomCode(code);
@@ -612,6 +630,13 @@ export default function ConnectRoom({
     e?.preventDefault();
     if (status !== 'connected' || !sessionRef.current) return;
 
+    const isPeerFullyVerified = Boolean(verifiedPeer?.isExplicitlyVerified);
+    const isChatUnlocked = isPeerFullyVerified || isUnverifiedRiskAcknowledged;
+    if (!isChatUnlocked) {
+      onShowToast('Please verify peer identity or acknowledge risk to send messages', 'warning');
+      return;
+    }
+
     if (attachedFile && !isSendingFile) {
       await handleSendAttachedFile();
     }
@@ -635,6 +660,12 @@ export default function ConnectRoom({
 
   const handleSelectFile = (file) => {
     if (!file) return;
+    const isPeerFullyVerified = Boolean(verifiedPeer?.isExplicitlyVerified);
+    const isChatUnlocked = isPeerFullyVerified || isUnverifiedRiskAcknowledged;
+    if (!isChatUnlocked) {
+      onShowToast('Please verify peer identity or acknowledge risk to send files', 'warning');
+      return;
+    }
     if (file.size > MAX_FILE_SIZE) {
       onShowToast(`File exceeds 25MB limit (${formatFileSize(file.size)})`, 'error');
       return;
@@ -649,7 +680,9 @@ export default function ConnectRoom({
   };
 
   const handleSendAttachedFile = async () => {
-    if (!attachedFile || !sessionRef.current || status !== 'connected' || isSendingFile) return;
+    const isPeerFullyVerified = Boolean(verifiedPeer?.isExplicitlyVerified);
+    const isChatUnlocked = isPeerFullyVerified || isUnverifiedRiskAcknowledged;
+    if (!attachedFile || !sessionRef.current || status !== 'connected' || isSendingFile || !isChatUnlocked) return;
 
     setIsSendingFile(true);
     try {
@@ -680,7 +713,9 @@ export default function ConnectRoom({
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (status === 'connected') setIsDraggingOver(true);
+    const isPeerFullyVerified = Boolean(verifiedPeer?.isExplicitlyVerified);
+    const isChatUnlocked = isPeerFullyVerified || isUnverifiedRiskAcknowledged;
+    if (status === 'connected' && isChatUnlocked) setIsDraggingOver(true);
   };
 
   const handleDragLeave = (e) => {
@@ -695,7 +730,9 @@ export default function ConnectRoom({
     e.stopPropagation();
     setIsDraggingOver(false);
 
-    if (status !== 'connected') return;
+    const isPeerFullyVerified = Boolean(verifiedPeer?.isExplicitlyVerified);
+    const isChatUnlocked = isPeerFullyVerified || isUnverifiedRiskAcknowledged;
+    if (status !== 'connected' || !isChatUnlocked) return;
     const files = e.dataTransfer?.files;
     if (files && files.length > 0) {
       handleSelectFile(files[0]);
@@ -709,6 +746,7 @@ export default function ConnectRoom({
     setStatus('idle');
     setStatusDetails(null);
     setRoomCode('');
+    setIsUnverifiedRiskAcknowledged(false);
     messagesRef.current.forEach(revokeFileBlobUrl);
     setMessages([]);
     setAttachedFile(null);
@@ -1104,7 +1142,11 @@ export default function ConnectRoom({
         const lastSentMessage = [...messages].reverse().find((m) => m.sender === 'me');
         const lastSentMessageId = lastSentMessage ? lastSentMessage.id : null;
         const peerInitials = verifiedPeer?.fingerprint ? verifiedPeer.fingerprint.slice(0, 2).toUpperCase() : 'PE';
-        const peerDisplayName = verifiedPeer?.fingerprint ? `Peer ${verifiedPeer.fingerprint.slice(0, 8)}` : 'Connected Peer';
+        const isPeerFullyVerified = Boolean(verifiedPeer?.isExplicitlyVerified);
+        const isChatUnlocked = isPeerFullyVerified || isUnverifiedRiskAcknowledged;
+        const peerDisplayName = verifiedPeer?.fingerprint 
+          ? `Peer ${verifiedPeer.fingerprint.slice(0, 8)}${isPeerFullyVerified ? ' ✓' : ' (Unverified)'}`
+          : 'Connected Peer';
 
         return (
           <div 
@@ -1361,6 +1403,54 @@ export default function ConnectRoom({
                     className="btn btn-secondary w-full py-2 text-xs"
                   >
                     Close
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Mandatory Peer Verification Gate Warning Banner (Task 3) */}
+            {!isChatUnlocked && (
+              <div className="mx-4 mt-3 mb-1 p-4 rounded-2xl bg-[#18281e] border border-[#ffcf6b]/50 shadow-xl space-y-3 animate-fade-in text-left">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#ffcf6b]/15 border border-[#ffcf6b]/50 flex items-center justify-center text-[#ffcf6b] shrink-0 mt-0.5">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-xs font-bold text-white font-mono uppercase tracking-wider">
+                        Unverified Peer Identity
+                      </h4>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#ffcf6b]/20 text-[#ffcf6b] border border-[#ffcf6b]/40 font-mono font-semibold">
+                        Security Warning
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#e2f5e7] leading-relaxed">
+                      This peer's identity has not been confirmed via QR code scan or manual fingerprint comparison. A network attacker or compromised signaling relay could potentially be executing a Man-In-The-Middle (MITM) attack to intercept this session.
+                    </p>
+                    {verifiedPeer?.fingerprint && (
+                      <div className="pt-1 font-mono text-[11px] text-[#8fe3a0] bg-[#0b120e] px-2.5 py-1 rounded-lg border border-[#24392b] select-all truncate">
+                        Peer Fingerprint: {verifiedPeer.fingerprint}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 pt-1 border-t border-[#24392b] flex-wrap">
+                  <button
+                    type="button"
+                    onClick={startCameraScanner}
+                    className="btn btn-primary text-xs py-2 px-3 flex items-center gap-1.5"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>Scan QR to Verify</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsUnverifiedRiskAcknowledged(true)}
+                    className="btn btn-secondary text-xs py-2 px-3 text-[#ffcf6b] hover:text-white border-[#ffcf6b]/40 hover:border-[#ffcf6b]"
+                  >
+                    I Understand the Risk — Allow Chat
                   </button>
                 </div>
               </div>
@@ -1701,8 +1791,9 @@ export default function ConnectRoom({
                 <button
                   type="button"
                   onClick={handleOpenFilePicker}
-                  className="chat-icon-btn w-10 h-10 min-w-[40px] min-h-[40px]"
-                  title="Attach File or Photo (Encrypted P2P)"
+                  disabled={!isChatUnlocked}
+                  className="chat-icon-btn w-10 h-10 min-w-[40px] min-h-[40px] disabled:opacity-30 disabled:cursor-not-allowed"
+                  title={!isChatUnlocked ? "Verify peer identity to enable file attachments" : "Attach File or Photo (Encrypted P2P)"}
                   aria-label="Attach file"
                 >
                   <Paperclip className="w-4.5 h-4.5 text-[#8fe3a0] hover:text-[#a5edb4]" />
@@ -1714,8 +1805,13 @@ export default function ConnectRoom({
                     type="text"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder={attachedFile ? "Add a message or press send..." : "Type an encrypted message..."}
-                    className="w-full bg-transparent border-none outline-none text-xs sm:text-sm text-white placeholder:text-[#5c9a6b] py-1 font-mono"
+                    disabled={!isChatUnlocked}
+                    placeholder={
+                      !isChatUnlocked 
+                        ? "Peer unverified — scan QR or acknowledge risk above to chat..." 
+                        : (attachedFile ? "Add a message or press send..." : "Type an encrypted message...")
+                    }
+                    className="w-full bg-transparent border-none outline-none text-xs sm:text-sm text-white placeholder:text-[#5c9a6b] py-1 font-mono disabled:opacity-40 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -1747,9 +1843,9 @@ export default function ConnectRoom({
 
                   <button
                     type="submit"
-                    disabled={!inputText.trim() && !attachedFile}
-                    className="chat-send-btn w-10 h-10 min-w-[40px] min-h-[40px]"
-                    title="Send encrypted message or file"
+                    disabled={!isChatUnlocked || (!inputText.trim() && !attachedFile)}
+                    className="chat-send-btn w-10 h-10 min-w-[40px] min-h-[40px] disabled:opacity-30 disabled:cursor-not-allowed"
+                    title={!isChatUnlocked ? "Verify peer identity to enable sending" : "Send encrypted message or file"}
                     aria-label="Send message"
                   >
                     <Send className="w-4 h-4 ml-0.5 text-[#0b120e]" />
