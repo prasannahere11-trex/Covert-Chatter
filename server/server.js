@@ -114,9 +114,104 @@ const wss = new WebSocketServer({ server: httpServer });
 const rooms = new Map();
 const clientRooms = new Map();
 
-// Helper to generate a short, readable 6-character room code (e.g. "A1B2C3")
+// Helper to extract client IP from incoming WebSocket handshake HTTP request
+function getClientIp(req) {
+  if (!req) return '127.0.0.1';
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress || '127.0.0.1';
+}
+
+// In-memory IP Rate Limiting & Failed Join Lockout state (Task 4)
+// ipLimits: Map<ip, { creates: number[], joins: number[], failedJoins: number[], lockedUntil: number }>
+const ipLimits = new Map();
+
+function getIpRecord(ip) {
+  let record = ipLimits.get(ip);
+  if (!record) {
+    record = { creates: [], joins: [], failedJoins: [], lockedUntil: 0 };
+    ipLimits.set(ip, record);
+  }
+  return record;
+}
+
+function checkRateLimit(ip, type) {
+  const now = Date.now();
+  const record = getIpRecord(ip);
+
+  // Check if IP is currently in cooldown lockout
+  if (record.lockedUntil > now) {
+    const remainingSec = Math.ceil((record.lockedUntil - now) / 1000);
+    return { allowed: false, message: `Too many failed attempts. Temporarily locked for ${remainingSec}s.` };
+  }
+
+  if (type === 'create') {
+    // Sliding window: Max 10 creates per 60 seconds
+    record.creates = record.creates.filter(t => now - t < 60000);
+    if (record.creates.length >= 10) {
+      return { allowed: false, message: 'Room creation rate limit exceeded (max 10/min). Please wait.' };
+    }
+    record.creates.push(now);
+    return { allowed: true };
+  }
+
+  if (type === 'join') {
+    // Sliding window: Max 20 joins per 60 seconds
+    record.joins = record.joins.filter(t => now - t < 60000);
+    if (record.joins.length >= 20) {
+      return { allowed: false, message: 'Room join rate limit exceeded (max 20/min). Please wait.' };
+    }
+    record.joins.push(now);
+    return { allowed: true };
+  }
+
+  return { allowed: true };
+}
+
+function recordFailedJoin(ip) {
+  const now = Date.now();
+  const record = getIpRecord(ip);
+  // Sliding window: count failures within the last 3 minutes
+  record.failedJoins = record.failedJoins.filter(t => now - t < 180000);
+  record.failedJoins.push(now);
+
+  // Lockout defense: 5 failed joins within 3 minutes triggers a 5-minute lockout
+  if (record.failedJoins.length >= 5) {
+    record.lockedUntil = now + 300000;
+    console.warn(`[Security Lockout] IP ${ip} locked out for 5 minutes due to 5 failed join attempts.`);
+  }
+}
+
+function recordSuccessfulJoin(ip) {
+  const record = ipLimits.get(ip);
+  if (record) {
+    record.failedJoins = [];
+  }
+}
+
+// Periodic 10-minute sweep to prune stale IP rate limit records and prevent unbounded memory growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of ipLimits.entries()) {
+    record.creates = record.creates.filter(t => now - t < 60000);
+    record.joins = record.joins.filter(t => now - t < 60000);
+    record.failedJoins = record.failedJoins.filter(t => now - t < 180000);
+    if (
+      record.creates.length === 0 &&
+      record.joins.length === 0 &&
+      record.failedJoins.length === 0 &&
+      record.lockedUntil < now
+    ) {
+      ipLimits.delete(ip);
+    }
+  }
+}, 10 * 60 * 1000);
+
+// Helper to generate a cryptographic 8-character hex room code (4.29 billion combinations)
 function generateRoomCode() {
-  return crypto.randomBytes(3).toString('hex').toUpperCase();
+  return crypto.randomBytes(4).toString('hex').toUpperCase();
 }
 
 // Clean up and immediately forget room & disconnect remaining peer
@@ -140,8 +235,9 @@ function leaveAndDestroyRoom(ws) {
   clientRooms.delete(ws);
 }
 
-wss.on('connection', (ws) => {
-  console.log('[Connection] Client connected');
+wss.on('connection', (ws, req) => {
+  const clientIp = getClientIp(req);
+  console.log(`[Connection] Client connected from ${clientIp}`);
 
   ws.on('message', (rawData) => {
     let message;
@@ -151,8 +247,14 @@ wss.on('connection', (ws) => {
       return; // Discard invalid non-JSON messages
     }
 
-    // 1. Create a new room with a random code
+    // 1. Create a new room with a random 8-character cryptographic code
     if (message.type === 'create') {
+      const rateCheck = checkRateLimit(clientIp, 'create');
+      if (!rateCheck.allowed) {
+        ws.send(JSON.stringify({ type: 'error', message: rateCheck.message }));
+        return;
+      }
+
       const roomCode = generateRoomCode();
       rooms.set(roomCode, new Set([ws]));
       clientRooms.set(ws, roomCode);
@@ -163,18 +265,28 @@ wss.on('connection', (ws) => {
 
     // 2. Join an existing room using code
     if (message.type === 'join') {
+      const rateCheck = checkRateLimit(clientIp, 'join');
+      if (!rateCheck.allowed) {
+        ws.send(JSON.stringify({ type: 'error', message: rateCheck.message }));
+        return;
+      }
+
       const roomCode = message.room ? message.room.toUpperCase().trim() : null;
       const room = rooms.get(roomCode);
 
       if (!room) {
+        recordFailedJoin(clientIp);
         ws.send(JSON.stringify({ type: 'error', message: 'Room not found' }));
         return;
       }
 
       if (room.size >= 2) {
+        recordFailedJoin(clientIp);
         ws.send(JSON.stringify({ type: 'error', message: 'Room is full' }));
         return;
       }
+
+      recordSuccessfulJoin(clientIp);
 
       // Add joiner to room
       room.add(ws);
