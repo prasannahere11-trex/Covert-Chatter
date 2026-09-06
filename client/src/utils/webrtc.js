@@ -122,6 +122,11 @@ export class PeerSession {
     this.sendSequence = 0;
     this.receiveSequence = 0;
 
+    // Signaling Reconnection & ICE Tracking State (Task 5)
+    this.signalingRetryCount = 0;
+    this.currentRoomAction = null;
+    this.iceGatheringTimeout = null;
+
     // ICE Candidate buffering: Holds candidates received before setRemoteDescription() finishes
     this.isRemoteDescriptionSet = false;
     this.queuedIceCandidates = [];
@@ -185,7 +190,7 @@ export class PeerSession {
   }
 
   /**
-   * Initialize signaling WebSocket connection
+   * Initialize signaling WebSocket connection with automatic backoff retries (Task 5)
    * @returns {Promise<WebSocket>}
    */
   connectSignaling() {
@@ -194,31 +199,33 @@ export class PeerSession {
         return resolve(this.ws);
       }
 
-      this.cleanup();
+      if (this.ws) {
+        try {
+          this.ws.close();
+        } catch {}
+        this.ws = null;
+      }
 
       try {
         this.ws = new WebSocket(this.signalingUrl);
       } catch (err) {
-        this.callbacks.onStatusChange('error', {
-          message: `Failed to connect to signaling server at ${this.signalingUrl}. Is the server running?`,
-        });
+        this.handleSignalingDisconnectOrError(err);
         return reject(err);
       }
 
       this.ws.onopen = () => {
+        this.signalingRetryCount = 0; // Reset retry counter on successful open
         resolve(this.ws);
       };
 
       this.ws.onerror = (err) => {
-        console.error('[Signaling] WebSocket error:', err);
-        this.callbacks.onStatusChange('error', {
-          message: `Unable to connect to signaling server (${this.signalingUrl}). Ensure server is started.`,
-        });
-        reject(err);
+        console.warn('[Signaling] WebSocket error event:', err);
+        // Let onclose handle retry logic
       };
 
       this.ws.onclose = () => {
         console.log('[Signaling] WebSocket connection closed');
+        this.handleSignalingDisconnectOrError();
       };
 
       this.ws.onmessage = async (event) => {
@@ -233,14 +240,58 @@ export class PeerSession {
   }
 
   /**
+   * Handle unexpected signaling drops with 3 automatic backoff retries (1.5s, 3s, 6s) (Task 5)
+   */
+  handleSignalingDisconnectOrError(err) {
+    // If DataChannel is already established and communicating, transient signaling drops are non-fatal
+    if (this.dataChannel && this.dataChannel.readyState === 'open') {
+      return;
+    }
+
+    // Only retry during active room setup (creating, waiting, joining, connecting)
+    if (!this.currentRoomAction) {
+      return;
+    }
+
+    const backoffs = [1500, 3000, 6000];
+    if (this.signalingRetryCount < 3) {
+      const delay = backoffs[this.signalingRetryCount];
+      this.signalingRetryCount++;
+      console.log(`[Signaling] Connection lost. Retrying in ${delay}ms (attempt ${this.signalingRetryCount}/3)...`);
+      this.callbacks.onStatusChange('connecting', {
+        message: `Signaling server disconnected. Reconnecting in ${delay / 1000}s (attempt ${this.signalingRetryCount}/3)...`,
+      });
+
+      setTimeout(async () => {
+        if (this.currentRoomAction && (!this.dataChannel || this.dataChannel.readyState !== 'open')) {
+          try {
+            await this.connectSignaling();
+            this.sendSignaling(this.currentRoomAction);
+          } catch (retryErr) {
+            console.warn('[Signaling] Reconnect attempt failed:', retryErr);
+          }
+        }
+      }, delay);
+    } else {
+      this.clearConnectionTimeout();
+      this.callbacks.onStatusChange('error', {
+        message: 'Unable to connect to signaling server after 3 retries. Please check your network connection.',
+      });
+      this.cleanup(false);
+    }
+  }
+
+  /**
    * Create a new ephemeral room as Host
    */
   async createRoom() {
     try {
       this.isHost = true;
+      this.currentRoomAction = { type: 'create' };
+      this.signalingRetryCount = 0;
       this.callbacks.onStatusChange('creating');
       await this.connectSignaling();
-      this.sendSignaling({ type: 'create' });
+      this.sendSignaling(this.currentRoomAction);
     } catch (err) {
       console.error('[WebRTC] Create room error:', err);
     }
@@ -255,9 +306,11 @@ export class PeerSession {
       this.isHost = false;
       const cleanCode = roomCode.trim().toUpperCase();
       this.roomCode = cleanCode;
+      this.currentRoomAction = { type: 'join', room: cleanCode };
+      this.signalingRetryCount = 0;
       this.callbacks.onStatusChange('joining');
       await this.connectSignaling();
-      this.sendSignaling({ type: 'join', room: cleanCode });
+      this.sendSignaling(this.currentRoomAction);
     } catch (err) {
       console.error('[WebRTC] Join room error:', err);
     }
@@ -327,7 +380,7 @@ export class PeerSession {
   }
 
   /**
-   * Set up local RTCPeerConnection
+   * Set up local RTCPeerConnection with ICE gathering timeout and connection failure detection (Task 5)
    */
   setupPeerConnection() {
     if (this.pc) {
@@ -350,6 +403,26 @@ export class PeerSession {
       }
     };
 
+    // Track ICE gathering completion and timeout if connection doesn't form within 10s (Task 5)
+    pc.onicegatheringstatechange = () => {
+      console.log('[WebRTC] ICE gathering state:', pc.iceGatheringState);
+      if (pc.iceGatheringState === 'complete') {
+        if (pc.connectionState !== 'connected' && (!this.dataChannel || this.dataChannel.readyState !== 'open')) {
+          if (this.iceGatheringTimeout) clearTimeout(this.iceGatheringTimeout);
+          this.iceGatheringTimeout = setTimeout(() => {
+            if (this.pc && this.pc.connectionState !== 'connected' && (!this.dataChannel || this.dataChannel.readyState !== 'open')) {
+              console.warn('[WebRTC] ICE gathering complete but P2P connection failed to establish within 10s.');
+              this.clearConnectionTimeout();
+              this.callbacks.onStatusChange('error', {
+                message: 'P2P connection failed across NAT/firewall. A TURN relay server may be required on restricted networks.',
+              });
+              this.cleanup(false);
+            }
+          }, 10000);
+        }
+      }
+    };
+
     // Monitor connection states with grace period for transient mobile app/gallery switches
     let disconnectGraceTimer = null;
 
@@ -357,18 +430,26 @@ export class PeerSession {
       console.log('[WebRTC] Connection state:', pc.connectionState);
       if (pc.connectionState === 'connected') {
         this.clearConnectionTimeout();
+        if (this.iceGatheringTimeout) {
+          clearTimeout(this.iceGatheringTimeout);
+          this.iceGatheringTimeout = null;
+        }
         if (disconnectGraceTimer) {
           clearTimeout(disconnectGraceTimer);
           disconnectGraceTimer = null;
         }
       } else if (pc.connectionState === 'failed') {
         this.clearConnectionTimeout();
+        if (this.iceGatheringTimeout) {
+          clearTimeout(this.iceGatheringTimeout);
+          this.iceGatheringTimeout = null;
+        }
         if (disconnectGraceTimer) {
           clearTimeout(disconnectGraceTimer);
           disconnectGraceTimer = null;
         }
         this.callbacks.onStatusChange('error', {
-          message: 'Connection failed — please check your network or try again.',
+          message: 'P2P connection failed across NAT/firewall. A TURN relay server may be required on restricted networks.',
         });
       } else if (pc.connectionState === 'disconnected') {
         // Transient state in WebRTC (e.g. mobile user switched to file manager or camera).
@@ -390,10 +471,18 @@ export class PeerSession {
       console.log('[WebRTC] ICE state:', pc.iceConnectionState);
       if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
         this.clearConnectionTimeout();
+        if (this.iceGatheringTimeout) {
+          clearTimeout(this.iceGatheringTimeout);
+          this.iceGatheringTimeout = null;
+        }
       } else if (pc.iceConnectionState === 'failed') {
         this.clearConnectionTimeout();
+        if (this.iceGatheringTimeout) {
+          clearTimeout(this.iceGatheringTimeout);
+          this.iceGatheringTimeout = null;
+        }
         this.callbacks.onStatusChange('error', {
-          message: 'Connection failed — please check your network or try again.',
+          message: 'P2P connection failed across NAT/firewall. A TURN relay server may be required on restricted networks.',
         });
       }
     };
@@ -967,8 +1056,15 @@ export class PeerSession {
       this.fileReceiver = null;
     }
 
+    if (this.iceGatheringTimeout) {
+      clearTimeout(this.iceGatheringTimeout);
+      this.iceGatheringTimeout = null;
+    }
+
     this.roomCode = null;
     this.isHost = false;
+    this.currentRoomAction = null;
+    this.signalingRetryCount = 0;
     // Release in-memory ephemeral keypair, signature, and derived session key references.
     // Note: Setting references to null allows garbage collection; JS runtime does not support forced memory scrubbing.
     this.ephemeralKeyPair = null;

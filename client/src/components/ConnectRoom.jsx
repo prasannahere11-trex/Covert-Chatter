@@ -862,6 +862,45 @@ export default function ConnectRoom({
             </div>
           )}
 
+          {/* Connection Error / Retry Card (Task 5) */}
+          {status === 'error' && statusDetails?.message && (
+            <div className="p-4 mx-2 sm:mx-6 bg-[#18281e] border border-rose-500/40 rounded-2xl shadow-xl space-y-3 animate-fade-in text-left">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0 mt-0.5">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div className="space-y-1 flex-1 min-w-0">
+                  <h4 className="text-xs font-bold text-white font-mono uppercase tracking-wider">
+                    Connection Alert
+                  </h4>
+                  <p className="text-xs text-[#e2f5e7] leading-relaxed">
+                    {statusDetails.message}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 pt-1 border-t border-[#24392b]">
+                <button
+                  type="button"
+                  onClick={handleStartChat}
+                  className="btn btn-primary text-xs py-2 px-3.5 inline-flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Retry Connection</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatus('idle');
+                    setStatusDetails(null);
+                  }}
+                  className="btn btn-secondary text-xs py-2 px-3"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Choice Cards (Start Chat & Join Chat) */}
           <div className="choices-grid">
             {/* Start Chat Card */}
