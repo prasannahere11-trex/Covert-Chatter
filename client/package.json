@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "html5-qrcode": "^2.3.8",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.1.0"
+    "vite": "^6.1.0",
+    "vitest": "^5.0.0"
   }
 }
