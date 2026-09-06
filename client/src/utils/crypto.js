@@ -61,6 +61,129 @@ export async function generateAgreementKeypair() {
 }
 
 /**
+ * Generate a fresh in-memory ephemeral ECDH P-256 keypair for a single session.
+ * Private key is non-extractable (extractable: false) and never persisted or exported.
+ * Public key is exported as JWK for wire transmission and signature attachment.
+ * 
+ * @returns {Promise<CryptoKeyPair>}
+ */
+export async function generateEphemeralAgreementKeypair() {
+  if (!window.crypto || !window.crypto.subtle) {
+    throw new Error('Web Crypto API (crypto.subtle) is not supported in this environment.');
+  }
+
+  return await window.crypto.subtle.generateKey(
+    {
+      name: 'ECDH',
+      namedCurve: 'P-256',
+    },
+    false, // extractable = false: Private key cannot be exported
+    ['deriveKey', 'deriveBits']
+  );
+}
+
+/**
+ * Export ephemeral ECDH public key to canonical JWK format.
+ * 
+ * @param {CryptoKey} ephemeralPublicKey
+ * @returns {Promise<JsonWebKey>}
+ */
+export async function exportEphemeralPublicKey(ephemeralPublicKey) {
+  const jwk = await window.crypto.subtle.exportKey('jwk', ephemeralPublicKey);
+  return {
+    kty: jwk.kty,
+    crv: jwk.crv,
+    x: jwk.x,
+    y: jwk.y,
+    key_ops: [],
+  };
+}
+
+/**
+ * Deterministically canonicalize an ECDH JWK to UTF-8 bytes for digital signing.
+ * 
+ * @param {JsonWebKey} ecdhJWK
+ * @returns {Uint8Array}
+ */
+export function canonicalizeEcdhJWKToBytes(ecdhJWK) {
+  const canonicalString = JSON.stringify({
+    crv: ecdhJWK.crv,
+    kty: ecdhJWK.kty,
+    x: ecdhJWK.x,
+    y: ecdhJWK.y,
+  });
+  return new TextEncoder().encode(canonicalString);
+}
+
+/**
+ * Sign the ephemeral ECDH public key using the sender's long-term non-extractable ECDSA private key.
+ * 
+ * @param {CryptoKey} myEcdsaPrivateKey - Long-term identity signing key
+ * @param {JsonWebKey} ephemeralEcdhJWK - Fresh ephemeral ECDH public key JWK
+ * @returns {Promise<number[]>} Digital signature byte array
+ */
+export async function signEphemeralAgreementKey(myEcdsaPrivateKey, ephemeralEcdhJWK) {
+  if (!myEcdsaPrivateKey) {
+    throw new Error('Long-term ECDSA private key is required to sign ephemeral ECDH key.');
+  }
+
+  const dataBytes = canonicalizeEcdhJWKToBytes(ephemeralEcdhJWK);
+  const signatureBuffer = await window.crypto.subtle.sign(
+    {
+      name: 'ECDSA',
+      hash: { name: 'SHA-256' },
+    },
+    myEcdsaPrivateKey,
+    dataBytes
+  );
+
+  return Array.from(new Uint8Array(signatureBuffer));
+}
+
+/**
+ * Verify a received ephemeral ECDH public key against the peer's long-term ECDSA public key.
+ * 
+ * @param {JsonWebKey} peerEcdsaPublicKeyJWK - Remote peer's long-term ECDSA public key JWK
+ * @param {JsonWebKey} ephemeralEcdhJWK - Remote peer's ephemeral ECDH public key JWK
+ * @param {number[]|Uint8Array} signatureArray - Remote peer's signature over the ephemeral key
+ * @returns {Promise<boolean>} True if signature is valid and untampered
+ */
+export async function verifyEphemeralAgreementKey(peerEcdsaPublicKeyJWK, ephemeralEcdhJWK, signatureArray) {
+  if (!peerEcdsaPublicKeyJWK || !ephemeralEcdhJWK || !signatureArray) {
+    return false;
+  }
+
+  try {
+    const peerPublicKey = await window.crypto.subtle.importKey(
+      'jwk',
+      peerEcdsaPublicKeyJWK,
+      {
+        name: 'ECDSA',
+        namedCurve: 'P-256',
+      },
+      true,
+      ['verify']
+    );
+
+    const dataBytes = canonicalizeEcdhJWKToBytes(ephemeralEcdhJWK);
+    const signatureBytes = new Uint8Array(signatureArray);
+
+    return await window.crypto.subtle.verify(
+      {
+        name: 'ECDSA',
+        hash: { name: 'SHA-256' },
+      },
+      peerPublicKey,
+      signatureBytes,
+      dataBytes
+    );
+  } catch (err) {
+    console.warn('[E2EE] Ephemeral agreement key signature verification error:', err);
+    return false;
+  }
+}
+
+/**
  * Step 3: Export public keys into JSON Web Key (JWK) format.
  * Public keys are safe to distribute to peers and display via QR codes.
  * 

@@ -17,7 +17,13 @@
  *    - Corrupted or unauthenticated messages dropped silently
  */
 
-import { deriveSharedSecret } from './crypto';
+import { 
+  deriveSharedSecret, 
+  generateEphemeralAgreementKeypair, 
+  exportEphemeralPublicKey, 
+  signEphemeralAgreementKey, 
+  verifyEphemeralAgreementKey 
+} from './crypto';
 import { encryptMessage, decryptMessage, signMessage, verifyMessage } from './encryption';
 import { createEphemeralPayload, DEFAULT_TTL_SECONDS, BURN_ON_READ_DELAY_SECONDS } from './ephemeral';
 import { sendFileStream, FileReceiver, BUFFER_LOW_THRESHOLD } from './fileTransfer';
@@ -105,9 +111,34 @@ export class PeerSession {
     this.connectionTimeout = null;
     this.fileReceiver = null;
 
+    // Ephemeral in-memory key agreement state for forward secrecy (Task 1)
+    this.ephemeralKeyPair = null;
+    this.myEphemeralJWK = null;
+    this.myEphemeralSignature = null;
+    this.peerEphemeralJWK = null;
+
     // ICE Candidate buffering: Holds candidates received before setRemoteDescription() finishes
     this.isRemoteDescriptionSet = false;
     this.queuedIceCandidates = [];
+  }
+
+  /**
+   * Initialize a fresh in-memory ephemeral ECDH keypair and sign its public JWK
+   * with the local long-term ECDSA private identity key.
+   */
+  async initEphemeralKeys() {
+    try {
+      this.ephemeralKeyPair = await generateEphemeralAgreementKeypair();
+      this.myEphemeralJWK = await exportEphemeralPublicKey(this.ephemeralKeyPair.publicKey);
+      if (this.myIdentity?.signingKeyPair?.privateKey) {
+        this.myEphemeralSignature = await signEphemeralAgreementKey(
+          this.myIdentity.signingKeyPair.privateKey,
+          this.myEphemeralJWK
+        );
+      }
+    } catch (err) {
+      console.error('[WebRTC] Failed to initialize ephemeral ECDH keys:', err);
+    }
   }
 
   /**
@@ -139,24 +170,11 @@ export class PeerSession {
   }
 
   /**
-   * Update or set peer identity and derive session key if channel is already active
+   * Update or set peer identity
    */
   async setPeerIdentity(peerIdentity) {
     this.peerIdentity = peerIdentity;
-    if (this.myIdentity?.agreementKeyPair?.privateKey && this.peerIdentity?.ecdh) {
-      try {
-        this.sessionKey = await deriveSharedSecret(
-          this.myIdentity.agreementKeyPair.privateKey,
-          this.peerIdentity.ecdh
-        );
-        console.log('[E2EE] Derived shared AES-256-GCM session key successfully.');
-        this.ensureFileReceiver();
-      } catch (err) {
-        console.error('[E2EE] Failed to derive shared secret:', err);
-      }
-    } else {
-      this.ensureFileReceiver();
-    }
+    this.ensureFileReceiver();
   }
 
   /**
@@ -522,22 +540,13 @@ export class PeerSession {
       console.log('[WebRTC] DataChannel "chat" is OPEN!');
       this.clearConnectionTimeout();
 
-      // Derive E2EE AES-256-GCM Session Key using ECDH agreement
-      if (this.myIdentity?.agreementKeyPair?.privateKey && this.peerIdentity?.ecdh) {
-        try {
-          this.sessionKey = await deriveSharedSecret(
-            this.myIdentity.agreementKeyPair.privateKey,
-            this.peerIdentity.ecdh
-          );
-          console.log('[E2EE] AES-256-GCM session key active.');
-          this.ensureFileReceiver();
-        } catch (err) {
-          console.error('[E2EE] Session key derivation failed:', err);
-        }
+      // Initialize fresh ephemeral ECDH keypair if not already created
+      if (!this.ephemeralKeyPair) {
+        await this.initEphemeralKeys();
       }
 
-      // Send handshake identity across direct channel
-      if (this.myIdentity?.publicJWKs) {
+      // Send signed ephemeral public key + long-term identity across direct channel
+      if (this.myIdentity?.publicJWKs && this.myEphemeralJWK && this.myEphemeralSignature) {
         try {
           dc.send(JSON.stringify({
             type: 'peer-identity-handshake',
@@ -545,11 +554,14 @@ export class PeerSession {
               protocol: 'covert-chatter',
               version: 1,
               ecdsa: this.myIdentity.publicJWKs.ecdsa,
-              ecdh: this.myIdentity.publicJWKs.ecdh,
               fingerprint: this.myIdentity.fingerprint,
             },
+            ephemeralEcdh: this.myEphemeralJWK,
+            ephemeralSignature: this.myEphemeralSignature,
           }));
-        } catch {}
+        } catch (err) {
+          console.error('[WebRTC] Failed to send identity handshake:', err);
+        }
       }
 
       this.callbacks.onStatusChange('connected', {
@@ -574,10 +586,48 @@ export class PeerSession {
       try {
         const payload = JSON.parse(event.data);
 
-        // 🤝 Automated Direct Identity Handshake
+        // 🤝 Automated Direct Identity & Signed Ephemeral Key Handshake (Forward Secrecy)
         if (payload.type === 'peer-identity-handshake' && payload.identity) {
           await this.setPeerIdentity(payload.identity);
           this.callbacks.onPeerIdentityLinked?.(payload.identity);
+
+          if (payload.ephemeralEcdh && payload.ephemeralSignature && payload.identity.ecdsa) {
+            const isSignatureValid = await verifyEphemeralAgreementKey(
+              payload.identity.ecdsa,
+              payload.ephemeralEcdh,
+              payload.ephemeralSignature
+            );
+
+            if (!isSignatureValid) {
+              console.warn('[E2EE] Ephemeral ECDH key signature verification failed! Dropping untrusted key.');
+              this.callbacks.onStatusChange('error', {
+                message: 'Security Alert: Peer ephemeral key signature verification failed. Connection terminated.',
+              });
+              this.cleanup(false);
+              return;
+            }
+
+            if (!this.ephemeralKeyPair) {
+              await this.initEphemeralKeys();
+            }
+
+            if (this.ephemeralKeyPair?.privateKey) {
+              this.peerEphemeralJWK = payload.ephemeralEcdh;
+              this.sessionKey = await deriveSharedSecret(
+                this.ephemeralKeyPair.privateKey,
+                payload.ephemeralEcdh
+              );
+              console.log('[E2EE] Derived fresh ephemeral AES-256-GCM session key successfully.');
+              this.ensureFileReceiver();
+
+              this.callbacks.onStatusChange('connected', {
+                room: this.roomCode,
+                isHost: this.isHost,
+                peerFingerprint: this.peerIdentity?.fingerprint,
+                isEncrypted: true,
+              });
+            }
+          }
           return;
         }
 
@@ -885,6 +935,12 @@ export class PeerSession {
 
     this.roomCode = null;
     this.isHost = false;
+    // Release in-memory ephemeral keypair, signature, and derived session key references.
+    // Note: Setting references to null allows garbage collection; JS runtime does not support forced memory scrubbing.
+    this.ephemeralKeyPair = null;
+    this.myEphemeralJWK = null;
+    this.myEphemeralSignature = null;
+    this.peerEphemeralJWK = null;
     this.sessionKey = null;
     this.isRemoteDescriptionSet = false;
     this.queuedIceCandidates = [];
